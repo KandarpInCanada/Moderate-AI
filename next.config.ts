@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
       "lh4.googleusercontent.com", // Alternative Google image domain
       "lh5.googleusercontent.com", // Alternative Google image domain
       "lh6.googleusercontent.com", // Alternative Google image domain
+      "placehold.co", // Placeholder image service
     ],
   },
 }

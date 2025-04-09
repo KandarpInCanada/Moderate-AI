@@ -1,7 +1,6 @@
 "use client";
 
 import { AlertTriangle, CheckCircle, Clock, Download, X } from "lucide-react";
-import Image from "next/image";
 
 interface ImageDetailModalProps {
   image: {
@@ -75,11 +74,9 @@ export default function ImageDetailModal({
       >
         {/* Image section */}
         <div className="md:w-3/5 bg-muted relative flex items-center justify-center">
-          <Image
+          <img
             src={image.url || "/placeholder.svg"}
             alt={image.filename}
-            width={800}
-            height={800}
             className="max-h-[50vh] md:max-h-[90vh] object-contain"
           />
         </div>

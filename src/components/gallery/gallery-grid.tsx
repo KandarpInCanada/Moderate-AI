@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import {
   AlertTriangle,
   CheckCircle,
@@ -14,6 +13,13 @@ import {
 import type { ModerationStatus } from "./gallery-container";
 import ImageDetailModal from "./image-detail-modal";
 
+// Create a helper function to generate placeholder URLs
+const getPlaceholderUrl = (query: string, width = 800, height = 600) => {
+  return `https://placehold.co/${width}x${height}/EEEEEE/999999?text=${encodeURIComponent(
+    query
+  )}`;
+};
+
 const sampleImages = [
   {
     id: "img1",
@@ -21,7 +27,7 @@ const sampleImages = [
     uploadDate: "2025-04-05T14:30:00Z",
     status: "approved",
     confidence: 99.2,
-    url: "/tropical-beach-paradise.png",
+    url: getPlaceholderUrl("Tropical Beach Paradise"),
     size: "2.4 MB",
     dimensions: "1920 x 1080",
     moderationDetails: {
@@ -39,7 +45,7 @@ const sampleImages = [
     uploadDate: "2025-04-04T10:15:00Z",
     status: "flagged",
     confidence: 87.5,
-    url: "/thoughtful-gaze.png", // Correct path
+    url: getPlaceholderUrl("Portrait Photo"),
     size: "1.8 MB",
     dimensions: "1200 x 1200",
     moderationDetails: {
@@ -58,7 +64,7 @@ const sampleImages = [
     uploadDate: "2025-04-03T16:45:00Z",
     status: "approved",
     confidence: 98.7,
-    url: "/strategic-marketing-meeting.png",
+    url: getPlaceholderUrl("Marketing Banner"),
     size: "3.2 MB",
     dimensions: "2560 x 1440",
     moderationDetails: {
@@ -76,7 +82,7 @@ const sampleImages = [
     uploadDate: "2025-04-03T09:20:00Z",
     status: "pending",
     confidence: 65.3,
-    url: "/assorted-products-display.png",
+    url: getPlaceholderUrl("Event Photo"),
     size: "4.1 MB",
     dimensions: "3840 x 2160",
     moderationDetails: {
@@ -93,7 +99,7 @@ const sampleImages = [
     uploadDate: "2025-04-02T13:10:00Z",
     status: "approved",
     confidence: 99.8,
-    url: "/assorted-products-display.png",
+    url: getPlaceholderUrl("Product Display"),
     size: "1.5 MB",
     dimensions: "1500 x 1500",
     moderationDetails: {
@@ -111,7 +117,7 @@ const sampleImages = [
     uploadDate: "2025-04-01T18:30:00Z",
     status: "approved",
     confidence: 97.9,
-    url: "/tropical-beach-paradise.png",
+    url: getPlaceholderUrl("Family Photo"),
     size: "2.8 MB",
     dimensions: "2048 x 1536",
     moderationDetails: {
@@ -129,7 +135,7 @@ const sampleImages = [
     uploadDate: "2025-03-31T11:45:00Z",
     status: "pending",
     confidence: 72.1,
-    url: "/strategic-marketing-meeting.png",
+    url: getPlaceholderUrl("Screenshot"),
     size: "0.9 MB",
     dimensions: "1920 x 1080",
     moderationDetails: {
@@ -146,7 +152,7 @@ const sampleImages = [
     uploadDate: "2025-03-30T14:20:00Z",
     status: "flagged",
     confidence: 82.3,
-    url: "/thoughtful-gaze.png",
+    url: getPlaceholderUrl("Graphic Design"),
     size: "3.5 MB",
     dimensions: "3000 x 2000",
     moderationDetails: {
@@ -263,12 +269,10 @@ export default function GalleryGrid({
               className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
             >
               <div className="relative aspect-square group">
-                <Image
+                <img
                   src={image.url || "/placeholder.svg"}
                   alt={image.filename}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button

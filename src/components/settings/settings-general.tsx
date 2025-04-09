@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 
 export default function SettingsGeneral() {
-  const { user, profileUrl } = useAuth();
+  const { user, profileUrl, signOut } = useAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -32,6 +35,17 @@ export default function SettingsGeneral() {
     }
   }, [user]);
 
+  // Debug function to log auth data
+  useEffect(() => {
+    console.log("Profile URL in settings:", profileUrl);
+    console.log("User data:", user);
+  }, [profileUrl, user]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/login");
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-foreground mb-6">
@@ -46,6 +60,12 @@ export default function SettingsGeneral() {
                 src={profileUrl || "/placeholder.svg"}
                 alt="Profile"
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Error loading profile image:", e);
+                  // Set a fallback on error
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
               />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
@@ -57,7 +77,9 @@ export default function SettingsGeneral() {
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            Profile photo from Google
+            {profileUrl
+              ? "Profile photo from Google"
+              : "No profile photo available"}
           </p>
         </div>
 
@@ -118,6 +140,20 @@ export default function SettingsGeneral() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Logout Button */}
+      <div className="mt-8 pt-6 border-t border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
+          Account Actions
+        </h3>
+        <button
+          onClick={handleSignOut}
+          className="flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white rounded-lg transition-colors"
+        >
+          <LogOut className="h-5 w-5 mr-2" />
+          Sign Out
+        </button>
       </div>
     </div>
   );

@@ -3,10 +3,16 @@
 import { useAuth } from "@/context/auth-context";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function UserProfile() {
   const { user, profileUrl, signOut } = useAuth();
   const router = useRouter();
+
+  // Debug function to log auth data
+  useEffect(() => {
+    console.log("Profile URL in sidebar:", profileUrl);
+  }, [profileUrl]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -27,17 +33,26 @@ export default function UserProfile() {
     ).toUpperCase();
   };
 
+  // Use a default placeholder if profileUrl is not available
+  const avatarUrl =
+    profileUrl || "https://placehold.co/100x100/EEEEEE/999999?text=User";
+
   return (
     <div className="flex items-center p-2 rounded-lg hover:bg-muted transition-all cursor-pointer">
       <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0">
         {profileUrl ? (
-          <div className="h-10 w-10 bg-muted rounded-full overflow-hidden">
-            <img
-              src={profileUrl || "/placeholder.svg"}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <img
+            src={avatarUrl || "/placeholder.svg"}
+            alt="Profile"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.error("Error loading profile image in sidebar:", e);
+              // Set a fallback on error
+              e.currentTarget.onerror = null;
+              e.currentTarget.src =
+                "https://placehold.co/100x100/EEEEEE/999999?text=User";
+            }}
+          />
         ) : (
           <div className="h-10 w-10 bg-gradient-to-br from-gray-700 to-gray-900 text-white rounded-full flex items-center justify-center font-medium">
             {getInitials()}
