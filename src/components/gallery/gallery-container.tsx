@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import GalleryGrid from "./gallery-grid";
 import GalleryFilters from "./gallery-filters";
+import ImageDetailView from "./image-detail-view";
 import type { ImageMetadata } from "@/types/image";
 
 // Status types for filtering
@@ -18,6 +19,9 @@ export default function GalleryContainer() {
   const [images, setImages] = useState<ImageMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
+    null
+  );
 
   const { user, loading: authLoading, session } = useAuth();
   const router = useRouter();
@@ -108,37 +112,47 @@ export default function GalleryContainer() {
               </p>
             </div>
 
-            {/* Filters */}
-            <GalleryFilters
-              activeFilter={activeFilter}
-              onFilterChange={setActiveFilter}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-            />
+            {selectedImage ? (
+              <ImageDetailView
+                image={selectedImage}
+                onBack={() => setSelectedImage(null)}
+              />
+            ) : (
+              <>
+                {/* Filters */}
+                <GalleryFilters
+                  activeFilter={activeFilter}
+                  onFilterChange={setActiveFilter}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                />
 
-            {/* Error message */}
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
-                <p className="text-red-700 dark:text-red-400">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                >
-                  Try again
-                </button>
-              </div>
+                {/* Error message */}
+                {error && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
+                    <p className="text-red-700 dark:text-red-400">{error}</p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+
+                {/* Gallery Grid */}
+                <GalleryGrid
+                  activeFilter={activeFilter}
+                  searchQuery={searchQuery}
+                  sortBy={sortBy}
+                  images={images}
+                  loading={loading}
+                  onSelectImage={setSelectedImage}
+                />
+              </>
             )}
-
-            {/* Gallery Grid */}
-            <GalleryGrid
-              activeFilter={activeFilter}
-              searchQuery={searchQuery}
-              sortBy={sortBy}
-              images={images}
-              loading={loading}
-            />
           </div>
         </main>
       </div>

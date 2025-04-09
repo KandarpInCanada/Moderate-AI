@@ -11,7 +11,6 @@ import {
   Search,
 } from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
-import ImageDetailModal from "./image-detail-modal";
 import type { ImageMetadata } from "@/types/image";
 
 interface GalleryGridProps {
@@ -20,6 +19,7 @@ interface GalleryGridProps {
   sortBy: "newest" | "oldest" | "name";
   images: ImageMetadata[];
   loading: boolean;
+  onSelectImage: (image: ImageMetadata) => void;
 }
 
 export default function GalleryGrid({
@@ -28,10 +28,8 @@ export default function GalleryGrid({
   sortBy,
   images,
   loading,
+  onSelectImage,
 }: GalleryGridProps) {
-  const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
-    null
-  );
   const [showDropdownId, setShowDropdownId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -214,13 +212,13 @@ export default function GalleryGrid({
                   alt={image.filename}
                   className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
                   onError={(e) => {
-                    // If image fails to load, replace with placeholder
-                    e.currentTarget.src = "/colorful-abstract-flow.png";
+                    // If image fails to load, use a generic placeholder
+                    e.currentTarget.src = `/placeholder.svg?height=400&width=400&query=Image`;
                   }}
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button
-                    onClick={() => setSelectedImage(image)}
+                    onClick={() => onSelectImage(image)}
                     className="bg-card rounded-full p-2 shadow-lg hover:bg-muted transition-colors"
                   >
                     <Eye className="h-5 w-5 text-foreground" />
@@ -273,7 +271,7 @@ export default function GalleryGrid({
                       <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
                         <div className="py-1">
                           <button
-                            onClick={() => setSelectedImage(image)}
+                            onClick={() => onSelectImage(image)}
                             className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
                           >
                             <Eye className="h-4 w-4 mr-2" />
@@ -322,14 +320,6 @@ export default function GalleryGrid({
             </div>
           ))}
         </div>
-      )}
-
-      {/* Image detail modal */}
-      {selectedImage && (
-        <ImageDetailModal
-          image={selectedImage}
-          onClose={() => setSelectedImage(null)}
-        />
       )}
     </>
   );
