@@ -227,27 +227,27 @@ export default function GalleryGrid({
   const getStatusClass = (status: string) => {
     switch (status) {
       case "approved":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900/50";
       case "flagged":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-900/50";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-900/50";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
   return (
     <>
       {sortedImages.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <Eye className="h-8 w-8 text-gray-400" />
+        <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+            <Eye className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             No images found
           </h3>
-          <p className="text-gray-500 max-w-md mx-auto">
+          <p className="text-muted-foreground max-w-md mx-auto">
             {activeFilter !== "all"
               ? `No ${activeFilter} images found. Try changing your filter or uploading new images.`
               : searchQuery
@@ -260,7 +260,7 @@ export default function GalleryGrid({
           {sortedImages.map((image) => (
             <div
               key={image.id}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all"
+              className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
             >
               <div className="relative aspect-square group">
                 <Image
@@ -273,9 +273,9 @@ export default function GalleryGrid({
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button
                     onClick={() => setSelectedImage(image)}
-                    className="bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+                    className="bg-card rounded-full p-2 shadow-lg hover:bg-muted transition-colors"
                   >
-                    <Eye className="h-5 w-5 text-gray-700" />
+                    <Eye className="h-5 w-5 text-foreground" />
                   </button>
                 </div>
                 <div className="absolute top-2 left-2">
@@ -292,7 +292,7 @@ export default function GalleryGrid({
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <h3
-                    className="font-medium text-gray-900 truncate"
+                    className="font-medium text-foreground truncate"
                     title={image.filename}
                   >
                     {image.filename}
@@ -300,25 +300,25 @@ export default function GalleryGrid({
                   <div className="relative">
                     <button
                       onClick={() => toggleDropdown(image.id)}
-                      className="p-1 rounded-full hover:bg-gray-100 text-gray-500"
+                      className="p-1 rounded-full hover:bg-muted text-muted-foreground"
                     >
                       <MoreHorizontal className="h-5 w-5" />
                     </button>
                     {showDropdownId === image.id && (
-                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                      <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
                         <div className="py-1">
                           <button
                             onClick={() => setSelectedImage(image)}
-                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
                           >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </button>
-                          <button className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                          <button className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted">
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </button>
-                          <button className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                          <button className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-muted">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </button>
@@ -327,11 +327,11 @@ export default function GalleryGrid({
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {formatDate(image.uploadDate)}
                 </p>
                 <div className="flex items-center mt-2">
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div className="w-full bg-muted rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full ${
                         image.confidence > 90
@@ -343,7 +343,7 @@ export default function GalleryGrid({
                       style={{ width: `${image.confidence}%` }}
                     ></div>
                   </div>
-                  <span className="ml-2 text-xs text-gray-500">
+                  <span className="ml-2 text-xs text-muted-foreground">
                     {image.confidence}%
                   </span>
                 </div>

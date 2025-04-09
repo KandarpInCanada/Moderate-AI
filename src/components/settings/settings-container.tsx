@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import Sidebar from "@/components/dashboard/sidebar";
+import SettingsGeneral from "./settings-general";
+import SettingsAppearance from "./settings-appearance";
+import SettingsNotifications from "./settings-notifications";
+import SettingsSecurity from "./settings-security";
+
+type SettingsTab = "general" | "appearance" | "notifications" | "security";
+
+export default function SettingsContainer() {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  return (
+    <>
+      <Sidebar activeView="settings" onNavigate={() => {}} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto p-6 bg-background">
+          <div className="max-w-7xl mx-auto">
+            {/* Page intro */}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-foreground">Settings</h2>
+              <p className="text-muted-foreground mt-1">
+                Manage your account settings and preferences
+              </p>
+            </div>
+
+            {/* Settings navigation */}
+            <div className="bg-card rounded-xl shadow-sm border border-border mb-6">
+              <div className="flex overflow-x-auto scrollbar-hide">
+                <nav className="flex p-2 space-x-2 w-full">
+                  <button
+                    onClick={() => setActiveTab("general")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === "general"
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    General
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("appearance")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === "appearance"
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Appearance
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("notifications")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === "notifications"
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Notifications
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("security")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === "security"
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Security
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* Settings content */}
+            <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+              {activeTab === "general" && <SettingsGeneral />}
+              {activeTab === "appearance" && <SettingsAppearance />}
+              {activeTab === "notifications" && <SettingsNotifications />}
+              {activeTab === "security" && <SettingsSecurity />}
+            </div>
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}

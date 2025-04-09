@@ -55,82 +55,92 @@ export default function ModerationOverview() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-foreground">
           Moderation Overview
         </h2>
-        <p className="text-gray-600 mt-1">
+        <p className="text-muted-foreground mt-1">
           Monitor your content moderation metrics and recent activity
         </p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-medium">Total Images</h3>
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <ImageIcon className="h-5 w-5 text-indigo-600" />
+            <h3 className="text-muted-foreground text-sm font-medium">
+              Total Images
+            </h3>
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <ImageIcon className="h-5 w-5 text-primary" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-foreground">
             {moderationStats.totalImages}
           </p>
-          <p className="text-sm text-gray-500 mt-2">+24 in the last 24 hours</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            +24 in the last 24 hours
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-medium">
+            <h3 className="text-muted-foreground text-sm font-medium">
               Pending Review
             </h3>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+              <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-foreground">
             {moderationStats.pendingReview}
           </p>
-          <p className="text-sm text-gray-500 mt-2">Requires human review</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Requires human review
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-medium">
+            <h3 className="text-muted-foreground text-sm font-medium">
               Flagged Content
             </h3>
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-foreground">
             {moderationStats.flaggedContent}
           </p>
-          <p className="text-sm text-gray-500 mt-2">11.4% of total content</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            11.4% of total content
+          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 text-sm font-medium">
+            <h3 className="text-muted-foreground text-sm font-medium">
               Approved Content
             </h3>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-foreground">
             {moderationStats.approvedContent}
           </p>
-          <p className="text-sm text-gray-500 mt-2">85.7% of total content</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            85.7% of total content
+          </p>
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-foreground">
             Recent Activity
           </h3>
-          <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+          <button className="text-sm text-primary hover:text-primary/90 font-medium">
             View All
           </button>
         </div>
@@ -138,42 +148,42 @@ export default function ModerationOverview() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <th className="px-4 py-3 border-b border-gray-200">Filename</th>
-                <th className="px-4 py-3 border-b border-gray-200">Time</th>
-                <th className="px-4 py-3 border-b border-gray-200">Status</th>
-                <th className="px-4 py-3 border-b border-gray-200">
-                  Confidence
-                </th>
-                <th className="px-4 py-3 border-b border-gray-200">Details</th>
+              <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-3 border-b border-border">Filename</th>
+                <th className="px-4 py-3 border-b border-border">Time</th>
+                <th className="px-4 py-3 border-b border-border">Status</th>
+                <th className="px-4 py-3 border-b border-border">Confidence</th>
+                <th className="px-4 py-3 border-b border-border">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {recentActivity.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
+                <tr key={item.id} className="hover:bg-muted/50">
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center">
-                        <ImageIcon className="h-5 w-5 text-gray-500" />
+                      <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-foreground">
                           {item.filename}
                         </p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <p className="text-sm text-gray-500">{item.timestamp}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {item.timestamp}
+                    </p>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         item.status === "approved"
-                          ? "bg-green-100 text-green-800"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                           : item.status === "flagged"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
+                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
                       }`}
                     >
                       {item.status === "approved" && (
@@ -191,7 +201,7 @@ export default function ModerationOverview() {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-16 bg-gray-200 rounded-full h-2.5">
+                      <div className="w-16 bg-muted rounded-full h-2.5">
                         <div
                           className={`h-2.5 rounded-full ${
                             item.confidence > 90
@@ -203,12 +213,12 @@ export default function ModerationOverview() {
                           style={{ width: `${item.confidence}%` }}
                         ></div>
                       </div>
-                      <span className="ml-2 text-xs text-gray-500">
+                      <span className="ml-2 text-xs text-muted-foreground">
                         {item.confidence}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                     {item.reason || "—"}
                   </td>
                 </tr>

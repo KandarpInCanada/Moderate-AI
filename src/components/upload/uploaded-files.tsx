@@ -24,9 +24,9 @@ export default function UploadedFiles({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all hover:shadow-md">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6 transition-all hover:shadow-md">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-semibold text-gray-900">
+          <h3 className="font-semibold text-foreground">
             Selected Images ({files.length})
           </h3>
           <div className="flex gap-3">
@@ -37,8 +37,8 @@ export default function UploadedFiles({
                 flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
                 ${
                   uploading
-                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? "bg-muted text-muted-foreground border-border cursor-not-allowed"
+                    : "bg-card text-foreground border-border hover:bg-muted"
                 }
               `}
             >
@@ -52,8 +52,8 @@ export default function UploadedFiles({
                 flex items-center px-4 py-1.5 rounded-lg text-sm font-medium transition-colors
                 ${
                   uploading
-                    ? "bg-indigo-100 text-indigo-400 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    ? "bg-primary/70 text-primary-foreground cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
                 }
               `}
             >
@@ -75,7 +75,7 @@ export default function UploadedFiles({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {files.map((file, index) => (
             <div key={index} className="group relative">
-              <div className="aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-50 relative">
+              <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted relative">
                 <Image
                   src={file.preview || "/placeholder.svg"}
                   alt={file.name}
@@ -112,15 +112,15 @@ export default function UploadedFiles({
                     <div className="flex gap-2">
                       <button
                         onClick={() => setPreviewImage(file.preview)}
-                        className="bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+                        className="bg-card rounded-full p-2 shadow-lg hover:bg-muted transition-colors"
                       >
-                        <Eye className="h-4 w-4 text-gray-700" />
+                        <Eye className="h-4 w-4 text-foreground" />
                       </button>
                       <button
                         onClick={() => onRemove(file)}
-                        className="bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
+                        className="bg-card rounded-full p-2 shadow-lg hover:bg-muted transition-colors"
                       >
-                        <X className="h-4 w-4 text-gray-700" />
+                        <X className="h-4 w-4 text-foreground" />
                       </button>
                     </div>
                   </div>
@@ -129,12 +129,12 @@ export default function UploadedFiles({
 
               <div className="mt-2">
                 <p
-                  className="text-sm font-medium text-gray-800 truncate"
+                  className="text-sm font-medium text-foreground truncate"
                   title={file.name}
                 >
                   {file.name}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {(file.size / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>

@@ -2,7 +2,7 @@ import UploadContainer from "@/components/upload/upload-container";
 
 export default function UploadPage() {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       <UploadContainer />
     </div>
   );

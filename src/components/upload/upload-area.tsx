@@ -80,11 +80,11 @@ export default function UploadArea({
     <div
       className={`
         border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300
-        ${isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-300"}
+        ${isDragging ? "border-primary bg-primary/5" : "border-border"}
         ${
           disabled
             ? "opacity-60 cursor-not-allowed"
-            : "cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50"
+            : "cursor-pointer hover:border-primary hover:bg-primary/5"
         }
       `}
       onDragOver={handleDragOver}
@@ -109,21 +109,21 @@ export default function UploadArea({
           mb-4 p-4 rounded-full transition-all duration-300
           ${
             isDragging
-              ? "bg-indigo-100 text-indigo-600"
-              : "bg-gray-100 text-gray-500"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
           }
         `}
         >
           <Upload className="h-8 w-8" />
         </div>
-        <p className="text-lg font-medium text-gray-800 mb-2">
+        <p className="text-lg font-medium text-foreground mb-2">
           {isDragging
             ? "Drop your images here"
             : "Drag and drop your images here"}
         </p>
-        <p className="text-sm text-gray-500 mb-4">or click to browse</p>
+        <p className="text-sm text-muted-foreground mb-4">or click to browse</p>
 
-        <div className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
+        <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center">
             <ImageIcon className="h-4 w-4 mr-1" />
             <span>JPG, PNG, GIF</span>
