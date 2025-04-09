@@ -29,31 +29,37 @@ jobs:
       - name: Run linting
         run: npm run lint || true
 
-  build-and-push:
-    name: Build and Push to ECR
-    needs: application
+  check-tag:
+    name: Check if Tag is Present
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    outputs:
+      has_tag: ${{ steps.check-tag.outputs.has_tag }}
+      tag_name: ${{ steps.check-tag.outputs.tag_name }}
+    steps:
+      - name: Check for tag
+        id: check-tag
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+            echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+            echo "Tag detected: $TAG"
+          else
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+            echo "No tag detected. Pipeline will fail at build stage."
+          fi
+
+  build-and-push:
+    name: Build and Push to ECR
+    needs: [application, check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.has_tag == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      
-      - name: Set image tag
-        id: set-tag
-        run: |
-          # Check if this is a tag push
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            # Extract tag name without 'refs/tags/' prefix
-            TAG=${GITHUB_REF#refs/tags/}
-            echo "Using tag: $TAG"
-            echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-          else
-            # Use commit SHA for non-tag pushes
-            echo "Using commit SHA: $GITHUB_SHA"
-            echo "IMAGE_TAG=$GITHUB_SHA" >> $GITHUB_ENV
-          fi
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -75,10 +81,20 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.check-tag.outputs.tag_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  fail-if-no-tag:
+    name: Fail Pipeline if No Tag
+    needs: [check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.has_tag != 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Fail workflow
+        run: |
+          echo "Error: No tag detected. This pipeline only runs when a tag is present."
+          exit 1
