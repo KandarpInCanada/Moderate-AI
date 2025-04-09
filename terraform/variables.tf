@@ -21,17 +21,34 @@ variable "aws_region" {
   type        = string
 }
 
-variable "environment" {
+variable "aws_environment" {
   description = "AWS environment"
   type        = string
 }
 
-variable "repository_name" {
+variable "ecr_repository_name" {
   description = "AWS environment"
   type        = string
 }
 
-variable "bucket_name" {
+variable "s3_bucket_name" {
   description = "AWS bucket name"
   type        = string
+}
+
+variable "vpc_name" {
+  description = "VPC name"
+  type        = string
+}
+variable "vpc_cidr" {
+  description = "VPC cidr block"
+  type        = string
+}
+variable "vpc_public_subnet_cidrs" {
+  description = "VPC public cidr block"
+  type        = list(string)
+}
+variable "vpc_azs" {
+  description = "VPC availability zones list"
+  type        = list(string)
 }
