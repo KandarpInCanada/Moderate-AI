@@ -7,7 +7,7 @@ import Sidebar from "@/components/dashboard/sidebar";
 import GalleryGrid from "./gallery-grid";
 import GalleryFilters from "./gallery-filters";
 
-// Moderation status types
+// Status types for filtering
 export type ModerationStatus = "approved" | "flagged" | "pending" | "all";
 
 export default function GalleryContainer() {
@@ -38,11 +38,11 @@ export default function GalleryContainer() {
             {/* Page intro */}
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-foreground">
-                Image Gallery
+                Photo Gallery
               </h2>
               <p className="text-muted-foreground mt-1">
-                View and manage all your uploaded images and their moderation
-                status
+                Browse and search your photos with AI-powered labels from AWS
+                Rekognition
               </p>
             </div>
 

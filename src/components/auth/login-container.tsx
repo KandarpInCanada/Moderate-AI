@@ -39,14 +39,14 @@ export default function LoginContainer() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">M</span>
+              <span className="text-white font-bold text-xl">P</span>
             </div>
           </div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            ModerateAI
+            PhotoSense
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Sign in to access your content moderation dashboard
+            Sign in to access your photo organization dashboard
           </p>
         </div>
 

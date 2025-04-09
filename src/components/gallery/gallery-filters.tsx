@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Tag, Users, MapPin } from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
 
 interface GalleryFiltersProps {
@@ -31,7 +31,7 @@ export default function GalleryFilters({
           <input
             type="text"
             className="block w-full pl-10 pr-3 py-2 border border-input rounded-lg leading-5 bg-background placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring text-foreground"
-            placeholder="Search by filename..."
+            placeholder="Search photos by content, labels, or text..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -51,33 +51,36 @@ export default function GalleryFilters({
           </button>
           <button
             onClick={() => onFilterChange("approved")}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "approved"
                 ? "bg-card text-green-600 dark:text-green-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
-            Approved
+            <Users className="h-3.5 w-3.5 mr-1" />
+            People
           </button>
           <button
             onClick={() => onFilterChange("flagged")}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "flagged"
-                ? "bg-card text-red-600 dark:text-red-400 shadow-sm"
+                ? "bg-card text-purple-600 dark:text-purple-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
-            Flagged
+            <Tag className="h-3.5 w-3.5 mr-1" />
+            Objects
           </button>
           <button
             onClick={() => onFilterChange("pending")}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "pending"
-                ? "bg-card text-yellow-600 dark:text-yellow-400 shadow-sm"
+                ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
-            Pending
+            <MapPin className="h-3.5 w-3.5 mr-1" />
+            Places
           </button>
         </div>
 

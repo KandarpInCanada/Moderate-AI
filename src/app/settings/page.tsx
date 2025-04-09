@@ -1,8 +1,8 @@
 import SettingsContainer from "@/components/settings/settings-container";
 
 export const metadata = {
-  title: "Settings - ModerateAI",
-  description: "Manage your ModerateAI account settings",
+  title: "Settings - PhotoSense",
+  description: "Manage your PhotoSense account settings",
 };
 
 export default function SettingsPage() {

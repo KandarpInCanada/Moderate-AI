@@ -1,8 +1,8 @@
 import Dashboard from "@/components/dashboard/dashboard";
 
 export const metadata = {
-  title: "Dashboard - ModerateAI",
-  description: "AI-powered content moderation dashboard",
+  title: "Dashboard - PhotoSense",
+  description: "AI-powered photo organization dashboard",
 };
 
 export default function Home() {

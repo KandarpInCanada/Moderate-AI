@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ModerateAI - Content Moderator",
-  description: "AI-powered content moderation platform",
+  title: "PhotoSense - Smart Photo Organization",
+  description: "AI-powered photo organization with AWS Rekognition",
 };
 
 export default function RootLayout({

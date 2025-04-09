@@ -1,54 +1,68 @@
 "use client";
 
-import { ImageIcon, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { ImageIcon, Tag, Users, Search, Calendar } from "lucide-react";
 
 // Sample data for the dashboard
-const moderationStats = {
+const photoStats = {
   totalImages: 1248,
-  pendingReview: 37,
-  flaggedContent: 142,
-  approvedContent: 1069,
-  moderationAccuracy: 98.5,
+  peopleDetected: 837,
+  objectsLabeled: 3542,
+  textDetected: 215,
+  lastUpload: "2 hours ago",
 };
 
 // Sample recent activity
 const recentActivity = [
   {
     id: 1,
-    filename: "beach-vacation.jpg",
+    filename: "family-vacation.jpg",
     timestamp: "2 minutes ago",
-    status: "approved",
+    labels: ["People", "Beach", "Ocean", "Sunset"],
+    faces: 4,
     confidence: 99.2,
   },
   {
     id: 2,
-    filename: "profile-photo-3.png",
+    filename: "office-meeting.png",
     timestamp: "15 minutes ago",
-    status: "flagged",
-    confidence: 87.5,
-    reason: "Potential adult content",
+    labels: ["People", "Office", "Business", "Indoor"],
+    faces: 6,
+    confidence: 97.5,
   },
   {
     id: 3,
-    filename: "marketing-banner.jpg",
+    filename: "city-skyline.jpg",
     timestamp: "42 minutes ago",
-    status: "approved",
+    labels: ["City", "Building", "Architecture", "Sky"],
+    faces: 0,
     confidence: 98.7,
   },
   {
     id: 4,
-    filename: "event-photo.jpg",
+    filename: "pet-dog.jpg",
     timestamp: "1 hour ago",
-    status: "pending",
-    confidence: 65.3,
+    labels: ["Dog", "Pet", "Animal", "Grass"],
+    faces: 0,
+    confidence: 99.3,
   },
   {
     id: 5,
-    filename: "product-image.png",
+    filename: "birthday-party.png",
     timestamp: "2 hours ago",
-    status: "approved",
-    confidence: 99.8,
+    labels: ["People", "Cake", "Celebration", "Indoor"],
+    faces: 8,
+    confidence: 96.8,
   },
+];
+
+// Sample top categories
+const topCategories = [
+  { name: "People", count: 423 },
+  { name: "Nature", count: 287 },
+  { name: "Buildings", count: 156 },
+  { name: "Animals", count: 132 },
+  { name: "Food", count: 98 },
+  { name: "Vehicles", count: 76 },
 ];
 
 export default function ModerationOverview() {
@@ -56,10 +70,10 @@ export default function ModerationOverview() {
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-foreground">
-          Moderation Overview
+          Photo Analysis Dashboard
         </h2>
         <p className="text-muted-foreground mt-1">
-          Monitor your content moderation metrics and recent activity
+          Smart photo organization powered by AWS Rekognition
         </p>
       </div>
 
@@ -68,163 +82,221 @@ export default function ModerationOverview() {
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-muted-foreground text-sm font-medium">
-              Total Images
+              Total Photos
             </h3>
             <div className="p-2 bg-primary/10 rounded-lg">
               <ImageIcon className="h-5 w-5 text-primary" />
             </div>
           </div>
           <p className="text-3xl font-bold text-foreground">
-            {moderationStats.totalImages}
+            {photoStats.totalImages}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            +24 in the last 24 hours
+            Last upload {photoStats.lastUpload}
           </p>
         </div>
 
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-muted-foreground text-sm font-medium">
-              Pending Review
+              People Detected
             </h3>
-            <div className="p-2 bg-yellow-500/10 dark:bg-yellow-400/10 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="p-2 bg-indigo-500/10 dark:bg-indigo-400/10 rounded-lg">
+              <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-foreground">
-            {moderationStats.pendingReview}
+            {photoStats.peopleDetected}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Requires human review
+            Across {photoStats.totalImages} photos
           </p>
         </div>
 
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-muted-foreground text-sm font-medium">
-              Flagged Content
+              Objects Labeled
             </h3>
-            <div className="p-2 bg-red-500/10 dark:bg-red-400/10 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            <div className="p-2 bg-purple-500/10 dark:bg-purple-400/10 rounded-lg">
+              <Tag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-foreground">
-            {moderationStats.flaggedContent}
+            {photoStats.objectsLabeled}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            11.4% of total content
+            Auto-categorized by AI
           </p>
         </div>
 
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-muted-foreground text-sm font-medium">
-              Approved Content
+              Text Detected
             </h3>
             <div className="p-2 bg-green-500/10 dark:bg-green-400/10 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <Search className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
           <p className="text-3xl font-bold text-foreground">
-            {moderationStats.approvedContent}
+            {photoStats.textDetected}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            85.7% of total content
+            Searchable content
           </p>
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Top Categories */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-1 bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground">
+              Top Categories
+            </h3>
+            <button className="text-sm text-primary hover:text-primary/90 font-medium">
+              View All
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {topCategories.map((category) => (
+              <div
+                key={category.name}
+                className="flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center mr-3">
+                    <Tag className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground">
+                    {category.name}
+                  </span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {category.count} photos
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-border">
+            <button className="w-full py-2 text-sm text-center text-primary font-medium hover:text-primary/90">
+              Manage Categories
+            </button>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-foreground">
+              Recently Analyzed Photos
+            </h3>
+            <button className="text-sm text-primary hover:text-primary/90 font-medium">
+              View All
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="px-4 py-3 border-b border-border">Photo</th>
+                  <th className="px-4 py-3 border-b border-border">Time</th>
+                  <th className="px-4 py-3 border-b border-border">Labels</th>
+                  <th className="px-4 py-3 border-b border-border">Faces</th>
+                  <th className="px-4 py-3 border-b border-border">
+                    Confidence
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {recentActivity.map((item) => (
+                  <tr key={item.id} className="hover:bg-muted/50">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
+                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-foreground">
+                            {item.filename}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <p className="text-sm text-muted-foreground">
+                        {item.timestamp}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {item.labels.map((label, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        <Users className="mr-1 h-3 w-3" />
+                        {item.faces}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-16 bg-muted rounded-full h-2.5">
+                          <div
+                            className="h-2.5 rounded-full bg-green-500"
+                            style={{ width: `${item.confidence}%` }}
+                          ></div>
+                        </div>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {item.confidence}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendar View Teaser */}
       <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-foreground">
-            Recent Activity
-          </h3>
-          <button className="text-sm text-primary hover:text-primary/90 font-medium">
-            View All
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">
+              Photo Timeline
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              View your photos organized by date
+            </p>
+          </div>
+          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+            Open Timeline
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-3 border-b border-border">Filename</th>
-                <th className="px-4 py-3 border-b border-border">Time</th>
-                <th className="px-4 py-3 border-b border-border">Status</th>
-                <th className="px-4 py-3 border-b border-border">Confidence</th>
-                <th className="px-4 py-3 border-b border-border">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {recentActivity.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/50">
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
-                        <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-foreground">
-                          {item.filename}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <p className="text-sm text-muted-foreground">
-                      {item.timestamp}
-                    </p>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === "approved"
-                          ? "bg-green-600 text-white dark:bg-green-500"
-                          : item.status === "flagged"
-                          ? "bg-red-600 text-white dark:bg-red-500"
-                          : "bg-yellow-600 text-white dark:bg-yellow-500"
-                      }`}
-                    >
-                      {item.status === "approved" && (
-                        <CheckCircle className="mr-1 h-3 w-3" />
-                      )}
-                      {item.status === "flagged" && (
-                        <AlertTriangle className="mr-1 h-3 w-3" />
-                      )}
-                      {item.status === "pending" && (
-                        <Clock className="mr-1 h-3 w-3" />
-                      )}
-                      {item.status.charAt(0).toUpperCase() +
-                        item.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-16 bg-muted rounded-full h-2.5">
-                        <div
-                          className={`h-2.5 rounded-full ${
-                            item.confidence > 90
-                              ? "bg-green-500"
-                              : item.confidence > 70
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          }`}
-                          style={{ width: `${item.confidence}%` }}
-                        ></div>
-                      </div>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {item.confidence}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                    {item.reason || "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex items-center justify-center p-8 border border-dashed border-border rounded-lg bg-muted/50">
+          <div className="text-center">
+            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h4 className="text-foreground font-medium mb-2">
+              Chronological Photo View
+            </h4>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Browse your photos organized by year, month, and day. AWS
+              Rekognition automatically detects dates from your images.
+            </p>
+          </div>
         </div>
       </div>
     </div>

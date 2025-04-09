@@ -36,10 +36,10 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
       <div className="p-6 border-b border-border">
         <div className="flex items-center space-x-2">
           <div className="h-8 w-8 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">M</span>
+            <span className="text-white font-bold text-lg">P</span>
           </div>
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            ModerateAI
+            PhotoSense
           </h1>
         </div>
       </div>

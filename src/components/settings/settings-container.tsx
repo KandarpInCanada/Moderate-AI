@@ -36,7 +36,7 @@ export default function SettingsContainer() {
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-foreground">Settings</h2>
               <p className="text-muted-foreground mt-1">
-                Manage your account settings and preferences
+                Manage your PhotoSense account settings and preferences
               </p>
             </div>
 

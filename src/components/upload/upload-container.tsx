@@ -104,8 +104,8 @@ export default function UploadContainer() {
                 Upload Images
               </h2>
               <p className="text-muted-foreground mt-1">
-                Upload your images for AI-powered content moderation. We support
-                JPG, PNG, and GIF formats.
+                Upload your photos for AI-powered organization and analysis with
+                AWS Rekognition.
               </p>
             </div>
 

@@ -1,25 +1,25 @@
 "use client";
 
-import { AlertTriangle, CheckCircle, Clock, Download, X } from "lucide-react";
+import { Tag, Users, MapPin, Download, X, Search } from "lucide-react";
 
 interface ImageDetailModalProps {
   image: {
     id: string;
     filename: string;
     uploadDate: string;
-    status: string;
+    labels: string[];
+    faces: number;
+    location: string;
     confidence: number;
     url: string;
     size: string;
     dimensions: string;
-    moderationDetails: {
-      categories: {
-        violence: number;
-        adult: number;
-        sensitive: number;
-      };
-      reason?: string;
-      moderatedAt?: string;
+    rekognitionDetails: {
+      labels: Array<{ name: string; confidence: number }>;
+      faces: number;
+      celebrities: Array<{ name: string; confidence: number }>;
+      text: string[];
+      analyzedAt: string;
     };
   };
   onClose: () => void;
@@ -57,32 +57,6 @@ export default function ImageDetailModal({
     return `${month} ${day}, ${year}, ${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "approved":
-        return <CheckCircle className="h-5 w-5" />;
-      case "flagged":
-        return <AlertTriangle className="h-5 w-5" />;
-      case "pending":
-        return <Clock className="h-5 w-5" />;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "approved":
-        return "bg-green-600 text-white dark:bg-green-500 dark:text-white border-green-700 dark:border-green-600";
-      case "flagged":
-        return "bg-red-600 text-white dark:bg-red-500 dark:text-white border-red-700 dark:border-red-600";
-      case "pending":
-        return "bg-yellow-600 text-white dark:bg-yellow-500 dark:text-white border-yellow-700 dark:border-yellow-600";
-      default:
-        return "bg-muted text-muted-foreground border-border";
-    }
-  };
-
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
@@ -118,15 +92,26 @@ export default function ImageDetailModal({
             </button>
           </div>
 
-          <div className="mb-6">
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium border ${getStatusClass(
-                image.status
-              )}`}
-            >
-              {getStatusIcon(image.status)}
-              <span className="ml-1 capitalize">{image.status}</span>
-            </span>
+          <div className="mb-6 flex flex-wrap gap-2">
+            {image.faces > 0 && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/30">
+                <Users className="h-4 w-4 mr-1" />
+                {image.faces} {image.faces === 1 ? "Person" : "People"}
+              </span>
+            )}
+            {image.location && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800/30">
+                <MapPin className="h-4 w-4 mr-1" />
+                {image.location}
+              </span>
+            )}
+            {image.rekognitionDetails.text &&
+              image.rekognitionDetails.text.length > 0 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800/30">
+                  <Search className="h-4 w-4 mr-1" />
+                  Text Detected
+                </span>
+              )}
           </div>
 
           <div className="space-y-6">
@@ -158,133 +143,126 @@ export default function ImageDetailModal({
                     {image.dimensions}
                   </span>
                 </div>
-                {image.moderationDetails.moderatedAt && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Moderated
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {formatDate(image.moderationDetails.moderatedAt)}
-                    </span>
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Analyzed
+                  </span>
+                  <span className="text-sm font-medium text-foreground">
+                    {formatDate(image.rekognitionDetails.analyzedAt)}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Moderation details */}
+            {/* AWS Rekognition details */}
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                Moderation Details
+                AWS Rekognition Analysis
               </h3>
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">
-                    Confidence
-                  </span>
-                  <div className="flex items-center">
-                    <div className="w-24 bg-muted rounded-full h-2 mr-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          image.confidence > 90
-                            ? "bg-green-500"
-                            : image.confidence > 70
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
-                        }`}
-                        style={{ width: `${image.confidence}%` }}
-                      ></div>
-                    </div>
+              <div className="bg-muted/50 rounded-lg p-4 space-y-4">
+                {/* Labels */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-foreground">
-                      {image.confidence}%
+                      Labels
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {image.rekognitionDetails.labels.length} detected
                     </span>
                   </div>
-                </div>
-
-                {/* Category scores */}
-                <div className="pt-2">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Category Scores:
-                  </p>
-                  <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Violence</span>
-                        <span className="text-foreground">
-                          {(
-                            image.moderationDetails.categories.violence * 100
-                          ).toFixed(1)}
-                          %
+                  <div className="flex flex-wrap gap-2">
+                    {image.rekognitionDetails.labels.map((label, index) => (
+                      <div key={index} className="group relative">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
+                          <Tag className="h-3 w-3 mr-1" />
+                          {label.name}
                         </span>
+                        <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-foreground text-background text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                          {label.confidence.toFixed(1)}% confidence
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full bg-red-500"
-                          style={{
-                            width: `${
-                              image.moderationDetails.categories.violence * 100
-                            }%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">
-                          Adult Content
-                        </span>
-                        <span className="text-foreground">
-                          {(
-                            image.moderationDetails.categories.adult * 100
-                          ).toFixed(1)}
-                          %
-                        </span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full bg-orange-500"
-                          style={{
-                            width: `${
-                              image.moderationDetails.categories.adult * 100
-                            }%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">
-                          Sensitive Content
-                        </span>
-                        <span className="text-foreground">
-                          {(
-                            image.moderationDetails.categories.sensitive * 100
-                          ).toFixed(1)}
-                          %
-                        </span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full bg-yellow-500"
-                          style={{
-                            width: `${
-                              image.moderationDetails.categories.sensitive * 100
-                            }%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Reason if flagged */}
-                {image.moderationDetails.reason && (
-                  <div className="pt-2">
-                    <p className="text-sm text-muted-foreground">Reason:</p>
-                    <p className="text-sm font-medium text-red-600 dark:text-red-400 mt-1">
-                      {image.moderationDetails.reason}
-                    </p>
+                {/* Faces */}
+                {image.rekognitionDetails.faces > 0 && (
+                  <div className="pt-3 border-t border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-foreground">
+                        Faces
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {image.rekognitionDetails.faces} detected
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mr-2">
+                        <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <span className="text-sm text-foreground">
+                        {image.rekognitionDetails.faces}{" "}
+                        {image.rekognitionDetails.faces === 1
+                          ? "person"
+                          : "people"}{" "}
+                        detected in this image
+                      </span>
+                    </div>
                   </div>
                 )}
+
+                {/* Celebrities */}
+                {image.rekognitionDetails.celebrities &&
+                  image.rekognitionDetails.celebrities.length > 0 && (
+                    <div className="pt-3 border-t border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">
+                          Celebrities
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {image.rekognitionDetails.celebrities.length}{" "}
+                          recognized
+                        </span>
+                      </div>
+                      {image.rekognitionDetails.celebrities.map(
+                        (celebrity, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="text-sm text-foreground">
+                              {celebrity.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {celebrity.confidence.toFixed(1)}% confidence
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                {/* Text */}
+                {image.rekognitionDetails.text &&
+                  image.rekognitionDetails.text.length > 0 && (
+                    <div className="pt-3 border-t border-border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">
+                          Text Detected
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {image.rekognitionDetails.text.length} items
+                        </span>
+                      </div>
+                      <div className="bg-background/50 p-2 rounded-md">
+                        {image.rekognitionDetails.text.map((text, index) => (
+                          <div key={index} className="text-sm text-foreground">
+                            "{text}"
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           </div>
@@ -296,7 +274,8 @@ export default function ImageDetailModal({
               Download
             </button>
             <button className="flex-1 flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">
-              Request Review
+              <Tag className="h-5 w-5 mr-2" />
+              Edit Labels
             </button>
           </div>
         </div>
