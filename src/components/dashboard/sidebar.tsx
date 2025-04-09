@@ -2,7 +2,6 @@
 import {
   LayoutDashboard,
   Upload,
-  LogOut,
   ImageIcon,
   Settings,
   Moon,
@@ -11,6 +10,9 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/components/theme-provider";
+import { useAuth } from "@/context/auth-context";
+import UserProfile from "./user-profile";
+import LoginButton from "./login-button";
 
 interface SidebarProps {
   activeView: string;
@@ -118,18 +120,9 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </span>
         </div>
-        <div className="flex items-center p-2 rounded-lg hover:bg-muted transition-all cursor-pointer">
-          <div className="h-10 w-10 bg-gradient-to-br from-gray-700 to-gray-900 text-white rounded-full flex items-center justify-center font-medium">
-            JD
-          </div>
-          <div className="ml-3 flex-1">
-            <p className="text-sm font-medium text-foreground">John Doe</p>
-            <p className="text-xs text-muted-foreground">Free Plan</p>
-          </div>
-          <button className="text-muted-foreground hover:text-foreground">
-            <LogOut className="h-5 w-5" />
-          </button>
-        </div>
+
+        {/* Conditional rendering based on auth state */}
+        {useAuth().user ? <UserProfile /> : <LoginButton />}
       </div>
     </div>
   );

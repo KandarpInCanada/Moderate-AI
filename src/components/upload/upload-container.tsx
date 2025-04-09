@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import UploadArea from "./upload-area";
 import UploadedFiles from "./uploaded-files";
@@ -8,6 +10,9 @@ import type { FileWithPreview } from "@/types/file";
 import { AlertCircle, CheckCircle } from "lucide-react";
 
 export default function UploadContainer() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
@@ -15,6 +20,18 @@ export default function UploadContainer() {
   );
   const [uploadComplete, setUploadComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  // If still loading or not authenticated, show nothing
+  if (loading || !user) {
+    return null;
+  }
+
   const handleFilesAdded = (newFiles: FileWithPreview[]) => {
     setFiles((prevFiles) => [...prevFiles, ...newFiles]);
     setUploadComplete(false);

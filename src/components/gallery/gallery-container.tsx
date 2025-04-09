@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import GalleryGrid from "./gallery-grid";
 import GalleryFilters from "./gallery-filters";
@@ -12,6 +14,20 @@ export default function GalleryContainer() {
   const [activeFilter, setActiveFilter] = useState<ModerationStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
+
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  // If still loading or not authenticated, show nothing
+  if (loading || !user) {
+    return null;
+  }
 
   return (
     <>

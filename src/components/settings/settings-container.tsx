@@ -1,16 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import SettingsGeneral from "./settings-general";
 import SettingsAppearance from "./settings-appearance";
-import SettingsNotifications from "./settings-notifications";
-import SettingsSecurity from "./settings-security";
 
-type SettingsTab = "general" | "appearance" | "notifications" | "security";
+type SettingsTab = "general" | "appearance";
 
 export default function SettingsContainer() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  // If still loading or not authenticated, show nothing
+  if (loading || !user) {
+    return null;
+  }
 
   return (
     <>
@@ -50,26 +64,6 @@ export default function SettingsContainer() {
                   >
                     Appearance
                   </button>
-                  <button
-                    onClick={() => setActiveTab("notifications")}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === "notifications"
-                        ? "bg-primary/10 text-primary"
-                        : "text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Notifications
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("security")}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      activeTab === "security"
-                        ? "bg-primary/10 text-primary"
-                        : "text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Security
-                  </button>
                 </nav>
               </div>
             </div>
@@ -78,8 +72,6 @@ export default function SettingsContainer() {
             <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               {activeTab === "general" && <SettingsGeneral />}
               {activeTab === "appearance" && <SettingsAppearance />}
-              {activeTab === "notifications" && <SettingsNotifications />}
-              {activeTab === "security" && <SettingsSecurity />}
             </div>
           </div>
         </main>
