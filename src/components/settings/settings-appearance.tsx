@@ -113,34 +113,6 @@ export default function SettingsAppearance() {
             </div>
           </div>
         </div>
-
-        <div className="border-t border-border pt-6">
-          <h4 className="text-sm font-medium text-muted-foreground mb-3">
-            Color Scheme
-          </h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="relative cursor-pointer rounded-lg border border-primary p-4 flex flex-col items-center bg-primary/10">
-              <div className="h-10 w-10 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full mb-3"></div>
-              <span className="font-medium text-primary">Indigo</span>
-              <div className="absolute top-2 right-2 h-4 w-4 rounded-full bg-primary border-2 border-card"></div>
-            </div>
-
-            <div className="relative cursor-pointer rounded-lg border border-border p-4 flex flex-col items-center">
-              <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full mb-3"></div>
-              <span className="font-medium text-foreground">Blue</span>
-            </div>
-
-            <div className="relative cursor-pointer rounded-lg border border-border p-4 flex flex-col items-center">
-              <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full mb-3"></div>
-              <span className="font-medium text-foreground">Green</span>
-            </div>
-
-            <div className="relative cursor-pointer rounded-lg border border-border p-4 flex flex-col items-center">
-              <div className="h-10 w-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-full mb-3"></div>
-              <span className="font-medium text-foreground">Orange</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

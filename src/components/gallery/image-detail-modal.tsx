@@ -30,21 +30,41 @@ export default function ImageDetailModal({
   onClose,
 }: ImageDetailModalProps) {
   const formatDate = (dateString: string) => {
+    // Use a fixed format that will be consistent between server and client
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
+    const month = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ][date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+    return `${month} ${day}, ${year}, ${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "approved":
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <CheckCircle className="h-5 w-5" />;
       case "flagged":
-        return <AlertTriangle className="h-5 w-5 text-red-500" />;
+        return <AlertTriangle className="h-5 w-5" />;
       case "pending":
-        return <Clock className="h-5 w-5 text-yellow-500" />;
+        return <Clock className="h-5 w-5" />;
       default:
         return null;
     }
@@ -53,11 +73,11 @@ export default function ImageDetailModal({
   const getStatusClass = (status: string) => {
     switch (status) {
       case "approved":
-        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900/50";
+        return "bg-green-600 text-white dark:bg-green-500 dark:text-white border-green-700 dark:border-green-600";
       case "flagged":
-        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-900/50";
+        return "bg-red-600 text-white dark:bg-red-500 dark:text-white border-red-700 dark:border-red-600";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-900/50";
+        return "bg-yellow-600 text-white dark:bg-yellow-500 dark:text-white border-yellow-700 dark:border-yellow-600";
       default:
         return "bg-muted text-muted-foreground border-border";
     }

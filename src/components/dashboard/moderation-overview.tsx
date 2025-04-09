@@ -87,7 +87,7 @@ export default function ModerationOverview() {
             <h3 className="text-muted-foreground text-sm font-medium">
               Pending Review
             </h3>
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg">
+            <div className="p-2 bg-yellow-500/10 dark:bg-yellow-400/10 rounded-lg">
               <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function ModerationOverview() {
             <h3 className="text-muted-foreground text-sm font-medium">
               Flagged Content
             </h3>
-            <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+            <div className="p-2 bg-red-500/10 dark:bg-red-400/10 rounded-lg">
               <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
             </div>
           </div>
@@ -121,7 +121,7 @@ export default function ModerationOverview() {
             <h3 className="text-muted-foreground text-sm font-medium">
               Approved Content
             </h3>
-            <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
+            <div className="p-2 bg-green-500/10 dark:bg-green-400/10 rounded-lg">
               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
           </div>
@@ -180,10 +180,10 @@ export default function ModerationOverview() {
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         item.status === "approved"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                          ? "bg-green-600 text-white dark:bg-green-500"
                           : item.status === "flagged"
-                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          ? "bg-red-600 text-white dark:bg-red-500"
+                          : "bg-yellow-600 text-white dark:bg-yellow-500"
                       }`}
                     >
                       {item.status === "approved" && (
