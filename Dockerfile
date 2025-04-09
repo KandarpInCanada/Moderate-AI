@@ -1,8 +1,8 @@
 # Stage 1: Dependencies
-FROM node:23-alpine:slim
+FROM node:23-alpine
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 3000
-CMD npm run dev
+CMD ["npm", "run", "dev"]
