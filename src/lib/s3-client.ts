@@ -1,25 +1,25 @@
-import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
-import { S3Client } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import { createPresignedPost } from "@aws-sdk/s3-presigned-post"
+import { S3Client } from "@aws-sdk/client-s3"
+import { v4 as uuidv4 } from "uuid"
 
 // Initialize the S3 client
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: process.env.NEXT_AWS_REGION || "us-east-1",
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.NEXT_AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.NEXT_AWS_SECRET_ACCESS_KEY || "",
   },
-});
+})
 
 // Check if AWS credentials are configured
 const isConfigured = () => {
   return !!(
-    process.env.AWS_ACCESS_KEY_ID &&
-    process.env.AWS_SECRET_ACCESS_KEY &&
-    process.env.AWS_REGION &&
-    process.env.AWS_BUCKET_NAME
-  );
-};
+    process.env.NEXT_AWS_ACCESS_KEY_ID &&
+    process.env.NEXT_AWS_SECRET_ACCESS_KEY &&
+    process.env.NEXT_AWS_REGION &&
+    process.env.NEXT_AWS_BUCKET_NAME
+  )
+}
 
 /**
  * Generate a pre-signed POST URL for direct browser uploads to S3
@@ -27,48 +27,47 @@ const isConfigured = () => {
  * @param userIdentifier User email or ID to create user-specific folders
  * @returns Pre-signed POST URL and fields
  */
-export async function getPresignedPostUrl(
-  file: { name: string; type: string; size: number },
-  userIdentifier: string
-) {
+export async function getPresignedPostUrl(file: { name: string; type: string; size: number }, userIdentifier: string) {
   if (!isConfigured()) {
-    throw new Error('AWS S3 is not properly configured');
+    throw new Error("AWS S3 is not properly configured")
   }
 
   // Sanitize user identifier for use in S3 path
-  const sanitizedUserIdentifier = userIdentifier.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-  
+  const sanitizedUserIdentifier = userIdentifier.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
+
   // Generate a unique filename to prevent collisions
-  const fileExtension = file.name.split('.').pop();
-  const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-  
+  const fileExtension = file.name.split(".").pop()
+  const uniqueFileName = `${uuidv4()}.${fileExtension}`
+
   // Create a folder structure: users/{sanitized_email}/{uuid}.{extension}
-  const key = `users/${sanitizedUserIdentifier}/${uniqueFileName}`;
+  const key = `users/${sanitizedUserIdentifier}/${uniqueFileName}`
 
   try {
+    // Create the presigned post with minimal conditions
     const { url, fields } = await createPresignedPost(s3Client, {
-      Bucket: process.env.AWS_BUCKET_NAME || '',
+      Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
       Key: key,
       Conditions: [
-        ['content-length-range', 0, 10485760], // up to 10 MB
-        ['starts-with', '$Content-Type', file.type],
+        // Only include essential conditions
+        ["content-length-range", 0, 20971520], // up to 20 MB
       ],
       Fields: {
-        acl: 'public-read',
-        'Content-Type': file.type,
+        // IMPORTANT: Removed the ACL field that was causing the error
+        // Include the content type to ensure proper file handling
+        "Content-Type": file.type,
       },
       Expires: 600, // 10 minutes
-    });
+    })
 
     return {
       url,
       fields,
       key,
-      fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`,
-    };
+      fileUrl: `https://${process.env.NEXT_AWS_BUCKET_NAME}.s3.${process.env.NEXT_AWS_REGION}.amazonaws.com/${key}`,
+    }
   } catch (error) {
-    console.error('Error generating pre-signed URL:', error);
-    throw error;
+    console.error("Error generating pre-signed URL:", error)
+    throw error
   }
 }
 
@@ -82,50 +81,40 @@ export async function getPresignedPostUrl(
 export async function uploadFileWithPresignedUrl(
   file: File,
   presignedData: { url: string; fields: Record<string, string>; fileUrl: string },
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
 ): Promise<string> {
-  const formData = new FormData();
-  
-  // Add all the fields from the pre-signed URL
-  Object.entries(presignedData.fields).forEach(([key, value]) => {
-    formData.append(key, value);
-  });
-  
-  // Add the file as the last field
-  formData.append('file', file);
+  // Create a new FormData instance
+  const formData = new FormData()
 
-  // Use XMLHttpRequest to track upload progress
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    
-    // Set up progress tracking
-    if (onProgress) {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          onProgress(percentComplete);
-        }
-      };
+  // IMPORTANT: Add all fields from the presigned URL first
+  Object.entries(presignedData.fields).forEach(([key, value]) => {
+    formData.append(key, value)
+  })
+
+  // IMPORTANT: Add the file LAST - S3 requires the file to be the last field
+  formData.append("file", file)
+
+  // Use fetch instead of XMLHttpRequest for simpler error handling
+  try {
+    const response = await fetch(presignedData.url, {
+      method: "POST",
+      body: formData,
+    })
+
+    // S3 returns 204 No Content on successful upload
+    if (response.ok) {
+      if (onProgress) onProgress(100)
+      return presignedData.fileUrl
     }
-    
-    // Handle completion
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(presignedData.fileUrl);
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
-      }
-    };
-    
-    // Handle errors
-    xhr.onerror = () => {
-      reject(new Error('Network error occurred during upload'));
-    };
-    
-    // Send the request
-    xhr.open('POST', presignedData.url, true);
-    xhr.send(formData);
-  });
+
+    // If not successful, try to get error details
+    const errorText = await response.text()
+    console.error("S3 error response:", errorText)
+    throw new Error(`Upload failed with status ${response.status}: ${errorText}`)
+  } catch (error) {
+    console.error("Error during S3 upload:", error)
+    throw error
+  }
 }
 
 export async function uploadToS3(file: File, onProgress?: (progress: number) => void): Promise<string> {

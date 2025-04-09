@@ -6,3 +6,9 @@ module "ecr" {
   repository_name = var.repository_name
   environment     = var.environment
 }
+
+module "media_storage" {
+  source      = "./modules/s3"
+  bucket_name = var.bucket_name
+  environment = var.environment
+}

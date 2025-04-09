@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 
 export default function AuthErrorPage() {
   const router = useRouter();
@@ -11,12 +10,6 @@ export default function AuthErrorPage() {
   const reason = searchParams.get("reason") || "unknown";
   const message =
     searchParams.get("message") || "No additional details available";
-
-  useEffect(() => {
-    // Log error details for debugging
-    console.log("Auth error reason:", reason);
-    console.log("Auth error message:", message);
-  }, [reason, message]);
 
   return (
     <div className="flex h-screen items-center justify-center bg-background">

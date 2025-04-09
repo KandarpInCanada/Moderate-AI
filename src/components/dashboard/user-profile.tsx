@@ -3,16 +3,10 @@
 import { useAuth } from "@/context/auth-context";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 
 export default function UserProfile() {
   const { user, profileUrl, signOut } = useAuth();
   const router = useRouter();
-
-  // Debug function to log auth data
-  useEffect(() => {
-    console.log("Profile URL in sidebar:", profileUrl);
-  }, [profileUrl]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -46,8 +40,6 @@ export default function UserProfile() {
             alt="Profile"
             className="w-full h-full object-cover"
             onError={(e) => {
-              console.error("Error loading profile image in sidebar:", e);
-              // Set a fallback on error
               e.currentTarget.onerror = null;
               e.currentTarget.src =
                 "https://placehold.co/100x100/EEEEEE/999999?text=User";

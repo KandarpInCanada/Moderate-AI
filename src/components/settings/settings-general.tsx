@@ -35,12 +35,6 @@ export default function SettingsGeneral() {
     }
   }, [user]);
 
-  // Debug function to log auth data
-  useEffect(() => {
-    console.log("Profile URL in settings:", profileUrl);
-    console.log("User data:", user);
-  }, [profileUrl, user]);
-
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
@@ -61,8 +55,6 @@ export default function SettingsGeneral() {
                 alt="Profile"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  console.error("Error loading profile image:", e);
-                  // Set a fallback on error
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = "/placeholder.svg";
                 }}

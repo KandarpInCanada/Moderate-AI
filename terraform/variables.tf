@@ -30,3 +30,8 @@ variable "repository_name" {
   description = "AWS environment"
   type        = string
 }
+
+variable "bucket_name" {
+  description = "AWS bucket name"
+  type        = string
+}

@@ -30,11 +30,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [profileUrl, setProfileUrl] = useState<string | null>(null);
 
-  // Debug function to log user metadata
   const extractProfilePicture = (userData: User | null) => {
     if (!userData) return null;
-
-    console.log("User metadata:", userData.user_metadata);
 
     // Try all possible paths where Google might store the profile picture
     const possiblePaths = [
@@ -53,7 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userData.user_metadata?.raw_user_meta_data?.picture,
     ].find((path) => path);
 
-    console.log("Found profile picture URL:", possiblePaths);
     return possiblePaths || null;
   };
 
@@ -64,8 +60,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const {
           data: { session: initialSession },
         } = await supabase.auth.getSession();
-
-        console.log("Initial session:", initialSession ? "Found" : "Not found");
 
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
@@ -88,12 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log(
-        "Auth state changed:",
-        _event,
-        session ? "Session exists" : "No session"
-      );
-
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -115,8 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      console.log("Initiating Google sign-in from auth context");
-
       // Do NOT specify a redirectTo - let Supabase handle the redirect flow
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -132,10 +118,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         console.error("Error initiating Google sign-in:", error);
       } else {
-        console.log(
-          "Sign-in initiated successfully, redirecting to:",
-          data?.url
-        );
         // Let the browser handle the redirect
       }
     } catch (error) {

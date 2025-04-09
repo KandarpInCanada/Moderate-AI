@@ -22,6 +22,7 @@ export default function UploadContainer() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [detailedError, setDetailedError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -38,6 +39,7 @@ export default function UploadContainer() {
     setFiles((prevFiles) => [...prevFiles, ...newFiles]);
     setUploadComplete(false);
     setError(null);
+    setDetailedError(null);
   };
 
   const handleRemoveFile = (fileToRemove: FileWithPreview) => {
@@ -50,6 +52,7 @@ export default function UploadContainer() {
     setUploading(true);
     setUploadComplete(false);
     setError(null);
+    setDetailedError(null);
     setUploadedUrls([]);
 
     const initialProgress: Record<string, number> = {};
@@ -85,9 +88,20 @@ export default function UploadContainer() {
             }),
           });
 
+          // Add this error handling to check for non-JSON responses
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to get upload URL");
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || "Failed to get upload URL");
+            } else {
+              // Handle HTML or other non-JSON responses
+              const errorText = await response.text();
+              console.error("Non-JSON error response:", errorText);
+              throw new Error(
+                `Server error: ${response.status} ${response.statusText}`
+              );
+            }
           }
 
           const presignedData = await response.json();
@@ -105,8 +119,15 @@ export default function UploadContainer() {
           );
 
           return fileUrl;
-        } catch (error) {
+        } catch (error: any) {
           console.error(`Error uploading ${file.name}:`, error);
+          // Capture detailed error information
+          setDetailedError(
+            (prev) =>
+              `${prev ? prev + "\n\n" : ""}Error uploading ${file.name}: ${
+                error.message
+              }`
+          );
           throw error;
         }
       });
@@ -190,6 +211,12 @@ export default function UploadContainer() {
                   <p className="text-red-700 dark:text-red-500 text-sm">
                     {error}
                   </p>
+
+                  {detailedError && (
+                    <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded text-xs font-mono whitespace-pre-wrap text-red-800 dark:text-red-300 max-h-40 overflow-auto">
+                      {detailedError}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
