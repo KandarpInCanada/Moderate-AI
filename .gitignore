@@ -102,3 +102,7 @@ Thumbs.db
 
 # Uploaded content (for development)
 /uploads/
+/terraform/.terraform
+*.hcl
+*.tfstate
+terraform/terraform.tfvars
