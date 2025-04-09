@@ -8,9 +8,10 @@ import UploadArea from "./upload-area";
 import UploadedFiles from "./uploaded-files";
 import type { FileWithPreview } from "@/types/file";
 import { AlertCircle, CheckCircle } from "lucide-react";
+import { uploadFileWithPresignedUrl } from "@/lib/s3-client";
 
 export default function UploadContainer() {
-  const { user, loading } = useAuth();
+  const { user, loading, session } = useAuth();
   const router = useRouter();
 
   const [files, setFiles] = useState<FileWithPreview[]>([]);
@@ -20,6 +21,7 @@ export default function UploadContainer() {
   );
   const [uploadComplete, setUploadComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -37,59 +39,94 @@ export default function UploadContainer() {
     setUploadComplete(false);
     setError(null);
   };
+
   const handleRemoveFile = (fileToRemove: FileWithPreview) => {
     setFiles((prevFiles) => prevFiles.filter((file) => file !== fileToRemove));
   };
+
   const handleUpload = async () => {
     if (files.length === 0) return;
+
     setUploading(true);
     setUploadComplete(false);
     setError(null);
+    setUploadedUrls([]);
+
     const initialProgress: Record<string, number> = {};
     files.forEach((file) => {
       initialProgress[file.name] = 0;
     });
     setUploadProgress(initialProgress);
+
     try {
-      await Promise.all(
-        files.map(async (file) => {
-          await simulateFileUpload(file, (progress) => {
-            setUploadProgress((prev) => ({
-              ...prev,
-              [file.name]: progress,
-            }));
+      // Get the access token from the session
+      const accessToken = session?.access_token;
+
+      if (!accessToken) {
+        throw new Error(
+          "Authentication token not available. Please log in again."
+        );
+      }
+
+      // Upload each file
+      const uploadPromises = files.map(async (file) => {
+        try {
+          // Get pre-signed URL from our API
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              contentType: file.type,
+              fileSize: file.size,
+            }),
           });
-        })
-      );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to get upload URL");
+          }
+
+          const presignedData = await response.json();
+
+          // Upload the file using the pre-signed URL
+          const fileUrl = await uploadFileWithPresignedUrl(
+            file,
+            presignedData,
+            (progress) => {
+              setUploadProgress((prev) => ({
+                ...prev,
+                [file.name]: progress,
+              }));
+            }
+          );
+
+          return fileUrl;
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          throw error;
+        }
+      });
+
+      // Wait for all uploads to complete
+      const urls = await Promise.all(uploadPromises);
+      setUploadedUrls(urls);
       setUploadComplete(true);
+
+      // Clear files after a delay
       setTimeout(() => {
         setFiles([]);
         setUploadProgress({});
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
-      setError("Failed to upload files. Please try again.");
+      setError(error.message || "Failed to upload files. Please try again.");
     } finally {
       setUploading(false);
     }
-  };
-
-  const simulateFileUpload = async (
-    file: File,
-    onProgress: (progress: number) => void
-  ) => {
-    return new Promise<void>((resolve) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        onProgress(progress);
-
-        if (progress >= 100) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 300);
-    });
   };
 
   return (
@@ -129,8 +166,16 @@ export default function UploadContainer() {
                     Upload Complete
                   </h4>
                   <p className="text-green-700 dark:text-green-500 text-sm">
-                    Your files have been uploaded and queued for moderation.
+                    Your files have been uploaded to your personal folder and
+                    queued for AI analysis.
                   </p>
+                  {uploadedUrls.length > 0 && (
+                    <div className="mt-2 text-xs text-green-700 dark:text-green-500">
+                      <p>
+                        Files uploaded to your personal folder: {user.email}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
