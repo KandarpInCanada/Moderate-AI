@@ -6,6 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import GalleryGrid from "./gallery-grid";
 import GalleryFilters from "./gallery-filters";
+import type { ImageMetadata } from "@/types/image";
 
 // Status types for filtering
 export type ModerationStatus = "approved" | "flagged" | "pending" | "all";
@@ -14,18 +15,79 @@ export default function GalleryContainer() {
   const [activeFilter, setActiveFilter] = useState<ModerationStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
+  const [images, setImages] = useState<ImageMetadata[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading, session } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
+
+  // Fetch images when the component mounts and user is authenticated
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (!user || !session?.access_token) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/images", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch images: ${response.status} ${response.statusText}`
+          );
+        }
+
+        const data = await response.json();
+
+        // Process the images to ensure they have all required fields
+        const processedImages = data.images.map((img: any) => ({
+          ...img,
+          // Convert string dates to Date objects if needed
+          lastModified: new Date(img.lastModified),
+          // Set uploadDate to lastModified if not present
+          uploadDate:
+            img.uploadDate || new Date(img.lastModified).toISOString(),
+          // Ensure these fields exist
+          labels: img.labels || [],
+          faces: img.faces || 0,
+          location: img.location || "",
+          confidence: img.confidence || 0,
+          dimensions: img.dimensions || "Unknown",
+          rekognitionDetails: img.rekognitionDetails || {
+            labels: [],
+            faces: 0,
+            celebrities: [],
+            text: [],
+            analyzedAt: new Date().toISOString(),
+          },
+        }));
+
+        setImages(processedImages);
+      } catch (err: any) {
+        console.error("Error fetching images:", err);
+        setError(err.message || "Failed to load images");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, [user, session]);
 
   // If still loading or not authenticated, show nothing
-  if (loading || !user) {
+  if (authLoading || !user) {
     return null;
   }
 
@@ -56,11 +118,26 @@ export default function GalleryContainer() {
               onSortChange={setSortBy}
             />
 
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
+                <p className="text-red-700 dark:text-red-400">{error}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
             {/* Gallery Grid */}
             <GalleryGrid
               activeFilter={activeFilter}
               searchQuery={searchQuery}
               sortBy={sortBy}
+              images={images}
+              loading={loading}
             />
           </div>
         </main>

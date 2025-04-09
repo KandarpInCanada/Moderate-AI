@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@aws-sdk/s3-presigned-post": "^3.782.0",
+    "@aws-sdk/s3-request-presigner": "^3.782.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.49.4",
     "gojs": "^3.0.21",

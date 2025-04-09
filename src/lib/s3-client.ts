@@ -1,5 +1,6 @@
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post"
-import { S3Client } from "@aws-sdk/client-s3"
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { v4 as uuidv4 } from "uuid"
 
 // Initialize the S3 client
@@ -113,6 +114,81 @@ export async function uploadFileWithPresignedUrl(
     throw new Error(`Upload failed with status ${response.status}: ${errorText}`)
   } catch (error) {
     console.error("Error during S3 upload:", error)
+    throw error
+  }
+}
+
+/**
+ * List all images in a user's S3 folder
+ * @param userIdentifier User email or ID
+ * @returns Array of image objects with metadata
+ */
+export async function listUserImages(userIdentifier: string) {
+  if (!isConfigured()) {
+    throw new Error("AWS S3 is not properly configured")
+  }
+
+  // Sanitize user identifier for use in S3 path
+  const sanitizedUserIdentifier = userIdentifier.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
+
+  // Create the prefix for the user's folder
+  const prefix = `users/${sanitizedUserIdentifier}/`
+
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
+      Prefix: prefix,
+    })
+
+    const response = await s3Client.send(command)
+
+    if (!response.Contents || response.Contents.length === 0) {
+      return []
+    }
+
+    // Process each object to create image metadata
+    const images = await Promise.all(
+      response.Contents.map(async (object) => {
+        if (!object.Key) return null
+
+        // Generate a pre-signed URL for the image that expires in 1 hour
+        const getObjectCommand = new GetObjectCommand({
+          Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
+          Key: object.Key,
+        })
+
+        const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 3600 })
+
+        // Extract filename from the key
+        const filename = object.Key.split("/").pop() || "unknown"
+
+        // Create image metadata
+        return {
+          id: object.Key,
+          key: object.Key,
+          filename,
+          url,
+          size: object.Size || 0,
+          lastModified: object.LastModified || new Date(),
+          // Default values for properties that would normally come from Rekognition
+          labels: [],
+          faces: 0,
+          location: "",
+          rekognitionDetails: {
+            labels: [],
+            faces: 0,
+            celebrities: [],
+            text: [],
+            analyzedAt: new Date().toISOString(),
+          },
+        }
+      }),
+    )
+
+    // Filter out any null values and return
+    return images.filter(Boolean)
+  } catch (error) {
+    console.error("Error listing user images:", error)
     throw error
   }
 }
