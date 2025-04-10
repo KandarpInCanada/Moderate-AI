@@ -122,16 +122,31 @@ jobs:
       
       - name: Update environment variables in task definition
         run: |
-          # Add or update environment variables in the container definition
-          jq '.containerDefinitions[0].environment = (.containerDefinitions[0].environment // []) + [
-            {"name": "NEXT_PUBLIC_SUPABASE_URL", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}"},
-            {"name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"},
-            {"name": "NEXT_AWS_ACCESS_KEY_ID", "value": "${{ secrets.NEXT_AWS_ACCESS_KEY_ID }}"},
-            {"name": "NEXT_AWS_SECRET_ACCESS_KEY", "value": "${{ secrets.NEXT_AWS_SECRET_ACCESS_KEY }}"},
-            {"name": "NEXT_AWS_REGION", "value": "${{ secrets.NEXT_AWS_REGION }}"},
-            {"name": "NEXT_AWS_BUCKET_NAME", "value": "${{ secrets.NEXT_AWS_BUCKET_NAME }}"},
-            {"name": "NEXT_SUPABASE_SERVICE_ROLE_KEY", "value": "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"}
-          ] | unique_by(.name)' task-definition.json > updated-task-definition.json
+          # First, let's check the structure of the task definition
+          cat task-definition.json | jq '.containerDefinitions'
+          
+          # Then update the environment variables with a more robust approach
+          jq 'if .containerDefinitions[0].environment then 
+                .containerDefinitions[0].environment += [
+                  {"name": "NEXT_PUBLIC_SUPABASE_URL", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}"},
+                  {"name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"},
+                  {"name": "NEXT_AWS_ACCESS_KEY_ID", "value": "${{ secrets.NEXT_AWS_ACCESS_KEY_ID }}"},
+                  {"name": "NEXT_AWS_SECRET_ACCESS_KEY", "value": "${{ secrets.NEXT_AWS_SECRET_ACCESS_KEY }}"},
+                  {"name": "NEXT_AWS_REGION", "value": "${{ secrets.NEXT_AWS_REGION }}"},
+                  {"name": "NEXT_AWS_BUCKET_NAME", "value": "${{ secrets.NEXT_AWS_BUCKET_NAME }}"},
+                  {"name": "NEXT_SUPABASE_SERVICE_ROLE_KEY", "value": "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"}
+                ] 
+              else 
+                .containerDefinitions[0] += {"environment": [
+                  {"name": "NEXT_PUBLIC_SUPABASE_URL", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}"},
+                  {"name": "NEXT_PUBLIC_SUPABASE_ANON_KEY", "value": "${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"},
+                  {"name": "NEXT_AWS_ACCESS_KEY_ID", "value": "${{ secrets.NEXT_AWS_ACCESS_KEY_ID }}"},
+                  {"name": "NEXT_AWS_SECRET_ACCESS_KEY", "value": "${{ secrets.NEXT_AWS_SECRET_ACCESS_KEY }}"},
+                  {"name": "NEXT_AWS_REGION", "value": "${{ secrets.NEXT_AWS_REGION }}"},
+                  {"name": "NEXT_AWS_BUCKET_NAME", "value": "${{ secrets.NEXT_AWS_BUCKET_NAME }}"},
+                  {"name": "NEXT_SUPABASE_SERVICE_ROLE_KEY", "value": "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"}
+                ]}
+              end' task-definition.json > updated-task-definition.json
           mv updated-task-definition.json task-definition.json
       
       - name: Update task definition with new image
