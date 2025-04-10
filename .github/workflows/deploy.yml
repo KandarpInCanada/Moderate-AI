@@ -60,6 +60,7 @@ jobs:
     if: needs.check-tag.outputs.has_tag == 'true'
     outputs:
       image: ${{ steps.set-image.outputs.image }}
+      tag_name: ${{ needs.check-tag.outputs.tag_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -120,6 +121,21 @@ jobs:
           aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} \
           --query taskDefinition > task-definition.json
       
+      # Debug step to check what's being passed
+      - name: Debug image value
+        run: |
+          echo "Image value from previous job: ${{ needs.build-and-push.outputs.image }}"
+          echo "Tag name: ${{ needs.build-and-push.outputs.tag_name }}"
+      
+      # Directly construct the image URI if the output isn't working
+      - name: Set image URI
+        id: image-uri
+        run: |
+          REGISTRY_ID=$(aws ecr describe-registry --query registryId --output text)
+          IMAGE_URI="${REGISTRY_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ needs.build-and-push.outputs.tag_name }}"
+          echo "image=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          echo "Using image: ${IMAGE_URI}"
+      
       - name: Update environment variables in task definition
         run: |
           # First, let's check the structure of the task definition
@@ -155,7 +171,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ needs.build-and-push.outputs.image }}
+          image: ${{ steps.image-uri.outputs.image }}
       
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
