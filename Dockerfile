@@ -1,32 +1,37 @@
-FROM node:23-alpine AS deps
+# Use Node.js image
+FROM node:23-alpine
+
+# Set working directory
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci
-FROM node:23-alpine AS builder
-WORKDIR /app
+
+# Copy application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Build arguments for public environment variables
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_AWS_REGION
 ARG NEXT_AWS_BUCKET_NAME
+
+# Set them as environment variables
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_AWS_REGION=$NEXT_AWS_REGION
 ENV NEXT_AWS_BUCKET_NAME=$NEXT_AWS_BUCKET_NAME
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build
-FROM node:23-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs \
-    && adduser --system --uid 1001 nextjs
-COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-USER nextjs
+
+# Expose port
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+
+# Start the application
+CMD ["npm", "run", "dev"]

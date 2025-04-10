@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.check-tag.outputs.has_tag == 'true'
     outputs:
-      image: ${{ steps.build-image.outputs.image }}
+      image: ${{ steps.set-image.outputs.image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -81,7 +81,6 @@ jobs:
         uses: docker/setup-buildx-action@v2
       
       - name: Build and push Docker image
-        id: build-image
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -97,6 +96,7 @@ jobs:
             NEXT_AWS_BUCKET_NAME=${{ secrets.NEXT_AWS_BUCKET_NAME }}
       
       - name: Set image output
+        id: set-image
         run: echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.check-tag.outputs.tag_name }}" >> $GITHUB_OUTPUT
 
   deploy-to-ecs:
