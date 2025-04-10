@@ -10,6 +10,10 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: photo-sense-prod
+  ECS_CLUSTER: photosense-prod
+  ECS_SERVICE: photosense-prod
+  ECS_TASK_DEFINITION: photosense-prod
+  CONTAINER_NAME: photosense-prod
 
 jobs:
   application:
@@ -54,6 +58,8 @@ jobs:
     needs: [application, check-tag]
     runs-on: ubuntu-latest
     if: needs.check-tag.outputs.has_tag == 'true'
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -75,6 +81,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
       
       - name: Build and push Docker image
+        id: build-image
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -86,6 +93,46 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      
+      - name: Set image output
+        run: echo "image=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.check-tag.outputs.tag_name }}" >> $GITHUB_OUTPUT
+
+  deploy-to-ecs:
+    name: Deploy to ECS
+    needs: [build-and-push, check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.has_tag == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+          --query taskDefinition > task-definition.json
+      
+      - name: Update task definition with new image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+      
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
 
   fail-if-no-tag:
     name: Fail Pipeline if No Tag

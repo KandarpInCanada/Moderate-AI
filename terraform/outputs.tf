@@ -17,3 +17,18 @@ output "vpc_id" {
 output "public_subnet_ids" {
   value = module.vpc.public_subnet_ids
 }
+
+output "cluster_name" {
+  description = "Name of the ECS cluster"
+  value       = module.ecs.cluster_name
+}
+
+output "service_name" {
+  description = "Name of the ECS service"
+  value       = module.ecs.service_name
+}
+
+output "load_balancer_dns_name" {
+  description = "DNS name of the load balancer"
+  value       = module.ecs.load_balancer_dns_name
+}
