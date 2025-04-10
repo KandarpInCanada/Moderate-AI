@@ -14,26 +14,32 @@ export async function GET() {
     // Check Supabase connection
     let databaseStatus = "unknown"
     try {
-      // Simple query to check if Supabase is responsive
-      const { error } = await supabase.from("health_check").select("count").limit(1).single()
+      // Use a more reliable way to check Supabase connection
+      const { data, error } = await supabase.auth.getSession()
 
-      // If the table doesn't exist, that's okay - we just want to check the connection
-      databaseStatus = error && error.code !== "PGRST116" ? "error" : "connected"
+      // We're just checking if the connection works, not if there's a session
+      databaseStatus = error ? "error" : "connected"
+
+      // Add error details if available
+      if (error) {
+        console.error("Supabase connection error:", error.message)
+      }
     } catch (dbError) {
       console.error("Database health check failed:", dbError)
       databaseStatus = "error"
     }
 
-    // Add dependency statuses to the response
-    const dependencies = {
-      database: databaseStatus,
-      // Add other dependencies here as needed (e.g., AWS S3, etc.)
-    }
+    // Determine overall status based on dependencies
+    const isHealthy = databaseStatus !== "error"
 
     // Return health check response
     return NextResponse.json({
       ...healthData,
-      dependencies,
+      status: isHealthy ? "healthy" : "degraded",
+      dependencies: {
+        database: databaseStatus,
+        // Add other dependencies here as needed (e.g., AWS S3, etc.)
+      },
     })
   } catch (error) {
     console.error("Health check failed:", error)
