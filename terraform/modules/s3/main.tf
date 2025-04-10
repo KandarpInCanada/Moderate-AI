@@ -1,8 +1,8 @@
 # Simple S3 bucket for a small website's media storage
 
 resource "aws_s3_bucket" "media_bucket" {
-  bucket = "${var.bucket_name}-${var.environment}"
-
+  bucket        = "${var.bucket_name}-${var.environment}"
+  force_destroy = true
   tags = {
     Name        = "Media Storage - ${var.environment}"
     Environment = var.environment
@@ -33,7 +33,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "media_bucket" {
 # CORS configuration for web access
 resource "aws_s3_bucket_cors_configuration" "media_bucket" {
   bucket = aws_s3_bucket.media_bucket.id
-
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
