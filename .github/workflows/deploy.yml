@@ -13,7 +13,7 @@ env:
   ECS_CLUSTER: photosense-prod
   ECS_SERVICE: photosense-prod
   ECS_TASK_DEFINITION: photosense-prod
-  CONTAINER_NAME: photosense-prod
+  CONTAINER_NAME: photo-sense
 
 jobs:
   application:
