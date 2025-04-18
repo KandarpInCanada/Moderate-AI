@@ -20,7 +20,6 @@ type NotificationsContextType = {
   isSubscribing: boolean;
   subscriptionError: string | null;
   subscriptionSuccess: boolean;
-  isConfigured: boolean;
 };
 
 const NotificationsContext = createContext<NotificationsContextType>({
@@ -31,7 +30,6 @@ const NotificationsContext = createContext<NotificationsContextType>({
   isSubscribing: false,
   subscriptionError: null,
   subscriptionSuccess: false,
-  isConfigured: false,
 });
 
 export const NotificationsProvider = ({
@@ -47,24 +45,7 @@ export const NotificationsProvider = ({
   );
   const [subscriptionSuccess, setSubscriptionSuccess] =
     useState<boolean>(false);
-  const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const { user, session } = useAuth();
-
-  // Check if SNS is configured
-  useEffect(() => {
-    const checkConfiguration = async () => {
-      try {
-        const response = await fetch("/api/notifications/check-config");
-        const data = await response.json();
-        setIsConfigured(data.configured);
-      } catch (error) {
-        console.error("Error checking SNS configuration:", error);
-        setIsConfigured(false);
-      }
-    };
-
-    checkConfiguration();
-  }, []);
 
   // Load enabled state from localStorage on mount
   useEffect(() => {
@@ -104,7 +85,12 @@ export const NotificationsProvider = ({
 
     try {
       // For web applications, we'll use an HTTPS endpoint
-      const endpoint = `${window.location.origin}/api/notifications/webhook`;
+      // Make sure the endpoint is a complete URL with https:// protocol
+      const endpoint = new URL(
+        "/api/notifications/webhook",
+        window.location.origin
+      ).toString();
+      console.log(`Using endpoint for subscription: ${endpoint}`);
 
       const response = await fetch("/api/notifications/subscribe", {
         method: "POST",
@@ -120,6 +106,7 @@ export const NotificationsProvider = ({
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Subscription error response:", errorData);
 
         // Check if we have detailed information about missing variables
         if (
@@ -139,6 +126,7 @@ export const NotificationsProvider = ({
       }
 
       const data = await response.json();
+      console.log("Subscription success response:", data);
 
       if (data.topicArn) {
         setTopicArn(data.topicArn);
@@ -165,7 +153,6 @@ export const NotificationsProvider = ({
         isSubscribing,
         subscriptionError,
         subscriptionSuccess,
-        isConfigured,
       }}
     >
       {children}

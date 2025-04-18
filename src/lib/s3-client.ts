@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid"
 
 // Initialize the S3 client
 const s3Client = new S3Client({
-  region: process.env.NEXT_AWS_REGION || "us-east-1",
+  region: process.env.NEXT_PUBLIC_AWS_REGION || "us-east-1",
   credentials: {
     accessKeyId: process.env.NEXT_AWS_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.NEXT_AWS_SECRET_ACCESS_KEY || "",
@@ -17,8 +17,8 @@ const isConfigured = () => {
   return !!(
     process.env.NEXT_AWS_ACCESS_KEY_ID &&
     process.env.NEXT_AWS_SECRET_ACCESS_KEY &&
-    process.env.NEXT_AWS_REGION &&
-    process.env.NEXT_AWS_BUCKET_NAME
+    process.env.NEXT_PUBLIC_AWS_REGION &&
+    process.env.NEXT_PUBLIC_AWS_BUCKET_NAME
   )
 }
 
@@ -46,7 +46,7 @@ export async function getPresignedPostUrl(file: { name: string; type: string; si
   try {
     // Create the presigned post with minimal conditions
     const { url, fields } = await createPresignedPost(s3Client, {
-      Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
+      Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
       Key: key,
       Conditions: [
         // Only include essential conditions
@@ -64,7 +64,7 @@ export async function getPresignedPostUrl(file: { name: string; type: string; si
       url,
       fields,
       key,
-      fileUrl: `https://${process.env.NEXT_AWS_BUCKET_NAME}.s3.${process.env.NEXT_AWS_REGION}.amazonaws.com/${key}`,
+      fileUrl: `https://${process.env.NEXT_PUBLIC_AWS_BUCKET_NAME}.s3.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${key}`,
     }
   } catch (error) {
     console.error("Error generating pre-signed URL:", error)
@@ -136,7 +136,7 @@ export async function listUserImages(userIdentifier: string) {
 
   try {
     const command = new ListObjectsV2Command({
-      Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
+      Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
       Prefix: prefix,
     })
 
@@ -153,7 +153,7 @@ export async function listUserImages(userIdentifier: string) {
 
         // Generate a pre-signed URL for the image that expires in 1 hour
         const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.NEXT_AWS_BUCKET_NAME || "",
+          Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
           Key: object.Key,
         })
 
