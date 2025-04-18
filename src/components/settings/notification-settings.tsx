@@ -6,12 +6,11 @@ import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function NotificationSettings() {
   const {
-    notifications,
-    clearNotifications,
     subscribeToSNS,
     topicArn,
     isSubscribing,
     subscriptionError,
+    subscriptionSuccess,
   } = useNotifications();
 
   const [showSubscribeSuccess, setShowSubscribeSuccess] = useState(false);
@@ -95,56 +94,12 @@ export default function NotificationSettings() {
               </div>
             )}
 
-            {showSubscribeSuccess && (
+            {(showSubscribeSuccess || subscriptionSuccess) && (
               <div className="mt-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-md p-2 flex items-start">
                 <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 mr-2 flex-shrink-0" />
                 <p className="text-xs text-green-700 dark:text-green-400">
                   Successfully subscribed to SNS notifications
                 </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Notification history */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium text-muted-foreground">
-              Notification History
-            </h4>
-            {notifications.length > 0 && (
-              <button
-                onClick={clearNotifications}
-                className="text-xs text-primary hover:text-primary/90 font-medium"
-              >
-                Clear All
-              </button>
-            )}
-          </div>
-
-          <div className="bg-muted/50 rounded-lg overflow-hidden">
-            {notifications.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                No notifications yet
-              </div>
-            ) : (
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="p-3 border-b border-border last:border-0"
-                  >
-                    <h5 className="text-sm font-medium text-foreground">
-                      {notification.title}
-                    </h5>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(notification.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
               </div>
             )}
           </div>

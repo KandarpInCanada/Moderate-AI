@@ -1,16 +1,5 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-client"
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb"
-import { unmarshall } from "@aws-sdk/util-dynamodb"
-
-// Initialize the DynamoDB client
-const dynamoClient = new DynamoDBClient({
-  region: process.env.NEXT_AWS_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.NEXT_AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.NEXT_AWS_SECRET_ACCESS_KEY || "",
-  },
-})
 
 export async function GET(request: Request) {
   try {
@@ -35,57 +24,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
     }
 
-    // Check if DynamoDB is configured
-    if (
-      !process.env.NEXT_AWS_ACCESS_KEY_ID ||
-      !process.env.NEXT_AWS_SECRET_ACCESS_KEY ||
-      !process.env.NEXT_AWS_REGION ||
-      !process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME
-    ) {
-      return NextResponse.json({ error: "Server configuration error: DynamoDB not configured" }, { status: 500 })
-    }
-
-    // Get user identifier (email or ID)
-    const userIdentifier = user.email || user.id
-
-    // Query DynamoDB for user's notifications
-    const params = {
-      TableName: process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME,
-      KeyConditionExpression: "UserId = :userId",
-      ExpressionAttributeValues: {
-        ":userId": { S: userIdentifier },
-      },
-      ScanIndexForward: false, // Sort by sort key in descending order (newest first)
-      Limit: 50, // Limit to 50 notifications
-    }
-
-    const command = new QueryCommand(params)
-    const response = await dynamoClient.send(command)
-
-    // Transform DynamoDB items to notification objects
-    const notifications =
-      response.Items?.map((item) => {
-        const notification = unmarshall(item)
-        return {
-          id: notification.NotificationId,
-          title: notification.Title,
-          message: notification.Message,
-          timestamp: notification.Timestamp,
-          read: notification.Read || false,
-          type: notification.Type || "info",
-          imageId: notification.ImageId,
-          imageUrl: notification.ImageUrl,
-        }
-      }) || []
-
-    return NextResponse.json({ notifications })
+    // Return empty notifications array since we're not fetching from DynamoDB
+    return NextResponse.json({ notifications: [] })
   } catch (error: any) {
-    console.error("Error fetching notifications:", error)
+    console.error("Error handling notifications request:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
 
-// Mark notifications as read
+// This endpoint is no longer needed but kept for API compatibility
 export async function POST(request: Request) {
   try {
     // Get the authorization header
@@ -109,32 +56,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
     }
 
-    // Parse the request body
-    const { notificationIds, markAll } = await request.json()
-
-    // Check if DynamoDB is configured
-    if (
-      !process.env.NEXT_AWS_ACCESS_KEY_ID ||
-      !process.env.NEXT_AWS_SECRET_ACCESS_KEY ||
-      !process.env.NEXT_AWS_REGION ||
-      !process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME
-    ) {
-      return NextResponse.json({ error: "Server configuration error: DynamoDB not configured" }, { status: 500 })
-    }
-
-    // Get user identifier (email or ID)
-    const userIdentifier = user.email || user.id
-
-    // TODO: Implement update logic for DynamoDB to mark notifications as read
-    // This would involve using the UpdateItem command for each notification ID
-    // or a BatchWriteItem command for multiple notifications
-
+    // Return success response for API compatibility
     return NextResponse.json({
       success: true,
-      message: markAll ? "All notifications marked as read" : "Notifications marked as read",
+      message: "Notification settings updated",
     })
   } catch (error: any) {
-    console.error("Error updating notifications:", error)
+    console.error("Error handling notifications update:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
