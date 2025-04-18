@@ -28,7 +28,7 @@ def handler(event, context):
             print(f"Detected labels for {key}: {labels}")
 
             table.put_item(Item={
-                'image_key': key,
+                'ImageId': key,         # Match the table's primary key
                 'labels': labels
             })
 

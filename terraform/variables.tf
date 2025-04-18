@@ -102,7 +102,12 @@ variable "ecs_health_check_path" {
   type        = string
 }
 
-variable "dynamodb_table_name" {
+variable "image_metadata_dynamodb_table_name" {
+  description = "Name of the DynamoDB table"
+  type        = string
+}
+
+variable "user_details_dynamodb_table_name" {
   description = "Name of the DynamoDB table"
   type        = string
 }

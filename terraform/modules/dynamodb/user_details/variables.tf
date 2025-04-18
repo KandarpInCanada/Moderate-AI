@@ -1,4 +1,4 @@
-variable "table_name" {
+variable "user_table_name" {
   description = "Name of the DynamoDB table"
   type        = string
 }

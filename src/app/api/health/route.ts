@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase-client"
+import dynamoClient from "@/lib/dynamo-client"
+import { DescribeTableCommand } from "@aws-sdk/client-dynamodb"
 
 export async function GET() {
   try {
@@ -29,8 +31,30 @@ export async function GET() {
       databaseStatus = "error"
     }
 
+    // Check DynamoDB connection
+    let dynamoStatus = "unknown"
+    try {
+      if (
+        process.env.NEXT_AWS_ACCESS_KEY_ID &&
+        process.env.NEXT_AWS_SECRET_ACCESS_KEY &&
+        process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME
+      ) {
+        // Try to describe the UserDetails table
+        const command = new DescribeTableCommand({
+          TableName: process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME,
+        })
+        await dynamoClient.send(command)
+        dynamoStatus = "connected"
+      } else {
+        dynamoStatus = "not_configured"
+      }
+    } catch (dynamoError) {
+      console.error("DynamoDB health check failed:", dynamoError)
+      dynamoStatus = "error"
+    }
+
     // Determine overall status based on dependencies
-    const isHealthy = databaseStatus !== "error"
+    const isHealthy = databaseStatus !== "error" && (dynamoStatus === "connected" || dynamoStatus === "not_configured")
 
     // Return health check response
     return NextResponse.json({
@@ -38,6 +62,7 @@ export async function GET() {
       status: isHealthy ? "healthy" : "degraded",
       dependencies: {
         database: databaseStatus,
+        dynamodb: dynamoStatus,
         // Add other dependencies here as needed (e.g., AWS S3, etc.)
       },
     })

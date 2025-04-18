@@ -53,6 +53,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return possiblePaths || null;
   };
 
+  // Store user details in DynamoDB
+  const storeUserDetails = async (userData: User, accessToken: string) => {
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          // Any additional user details can be added here
+          LastLoginTimestamp: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to store user details:", await response.text());
+      }
+    } catch (error) {
+      console.error("Error storing user details:", error);
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
@@ -68,6 +91,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (initialSession?.user) {
           const pictureUrl = extractProfilePicture(initialSession.user);
           setProfileUrl(pictureUrl);
+
+          // Store user details in DynamoDB when session is initialized
+          if (initialSession.access_token) {
+            await storeUserDetails(
+              initialSession.user,
+              initialSession.access_token
+            );
+          }
         }
       } catch (error) {
         console.error("Error getting initial session:", error);
@@ -81,7 +112,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -89,6 +120,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         const pictureUrl = extractProfilePicture(session.user);
         setProfileUrl(pictureUrl);
+
+        // Store user details in DynamoDB when auth state changes
+        if (session.access_token) {
+          await storeUserDetails(session.user, session.access_token);
+        }
       } else {
         setProfileUrl(null);
       }

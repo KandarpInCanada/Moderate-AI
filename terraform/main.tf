@@ -22,12 +22,20 @@ module "vpc" {
   azs                  = var.vpc_azs
 }
 
-module "dynamodb" {
-  source        = "./modules/dynamodb"
-  table_name    = var.dynamodb_table_name
-  hash_key      = var.dynamodb_hash_key
-  hash_key_type = var.dynamodb_hash_key_type
-  tags          = var.tags
+module "image_metadata_dynamodb" {
+  source                    = "./modules/dynamodb/image_metadata"
+  image_metadata_table_name = var.image_metadata_dynamodb_table_name
+  hash_key                  = var.dynamodb_hash_key
+  hash_key_type             = var.dynamodb_hash_key_type
+  tags                      = var.tags
+}
+
+module "user_details_dynamodb" {
+  source                    = "./modules/dynamodb/image_metadata"
+  image_metadata_table_name = var.user_details_dynamodb_table_name
+  hash_key                  = var.dynamodb_hash_key
+  hash_key_type             = var.dynamodb_hash_key_type
+  tags                      = var.tags
 }
 
 module "ecs_iam" {
@@ -40,11 +48,11 @@ module "ecs_iam" {
 module "lambda_iam_role" {
   source               = "./modules/iam/lambda_iam"
   lambda_function_name = var.lambda_function_name
-  dynamodb_table_name  = var.dynamodb_table_name
-  s3_bucket            = var.s3_bucket_name
+  dynamodb_table_name  = var.image_metadata_dynamodb_table_name
+  s3_bucket            = module.media_storage.bucket_id
   region               = var.aws_region
   tags                 = var.tags
-
+  depends_on           = [module.media_storage]
 }
 
 module "lambda_s3_trigger" {
