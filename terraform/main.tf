@@ -22,23 +22,64 @@ module "vpc" {
   azs                  = var.vpc_azs
 }
 
+module "dynamodb" {
+  source        = "./modules/dynamodb"
+  table_name    = var.dynamodb_table_name
+  hash_key      = var.dynamodb_hash_key
+  hash_key_type = var.dynamodb_hash_key_type
+  tags          = var.tags
+}
+
+module "ecs_iam" {
+  source        = "./modules/iam/ecs_iam"
+  name_prefix   = "${var.app_name}-${var.aws_environment}"
+  tags          = var.tags
+  s3_bucket_arn = module.media_storage.bucket_arn
+}
+
+module "lambda_iam_role" {
+  source               = "./modules/iam/lambda_iam"
+  lambda_function_name = var.lambda_function_name
+  dynamodb_table_name  = var.dynamodb_table_name
+  s3_bucket            = var.s3_bucket_name
+  region               = var.aws_region
+  tags                 = var.tags
+
+}
+
+module "lambda_s3_trigger" {
+  source               = "./modules/lambda_s3_trigger"
+  lambda_function_name = var.lambda_function_name
+  lambda_role_arn      = module.lambda_iam_role.lambda_exec_arn
+  lambda_handler       = var.lambda_function_handler_name
+  lambda_runtime       = "python3.9"
+  s3_bucket            = module.media_storage.bucket_id
+  s3_prefix            = var.lambda_function_s3_folder_watch_name
+  tags                 = var.tags
+  environment_vars     = var.lambda_environment_vars
+  depends_on           = [module.media_storage]
+}
+
+
 module "ecs" {
-  source                = "./modules/ecs"
-  aws_region            = var.aws_region
-  app_name              = var.app_name
-  environment           = var.aws_environment
-  tags                  = var.ecs_tags
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_ids    = module.vpc.private_subnet_ids
-  public_subnet_ids     = module.vpc.public_subnet_ids
-  ecr_repository_url    = module.ecr.repository_url
-  s3_bucket_arn         = module.media_storage.bucket_arn
-  task_cpu              = var.ecs_task_cpu
-  task_memory           = var.ecs_task_memory
-  container_name        = var.ecs_container_name
-  container_port        = var.ecs_container_port
-  container_image_tag   = var.ecs_container_image_tag
-  container_environment = var.ecs_container_environment
-  desired_count         = var.ecs_desired_count
-  health_check_path     = var.ecs_health_check_path
+  source                 = "./modules/ecs"
+  aws_region             = var.aws_region
+  app_name               = var.app_name
+  environment            = var.aws_environment
+  tags                   = var.tags
+  vpc_id                 = module.vpc.vpc_id
+  private_subnet_ids     = module.vpc.private_subnet_ids
+  public_subnet_ids      = module.vpc.public_subnet_ids
+  ecr_repository_url     = module.ecr.repository_url
+  s3_bucket_arn          = module.media_storage.bucket_arn
+  task_cpu               = var.ecs_task_cpu
+  task_memory            = var.ecs_task_memory
+  container_name         = var.ecs_container_name
+  container_port         = var.ecs_container_port
+  container_image_tag    = var.ecs_container_image_tag
+  container_environment  = var.ecs_container_environment
+  desired_count          = var.ecs_desired_count
+  health_check_path      = var.ecs_health_check_path
+  ecs_execution_role_arn = module.ecs_iam.execution_role_arn
+  ecs_task_role_arn      = module.ecs_iam.task_role_arn
 }
