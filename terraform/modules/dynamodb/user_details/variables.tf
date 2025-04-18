@@ -3,12 +3,12 @@ variable "user_table_name" {
   type        = string
 }
 
-variable "hash_key" {
+variable "user_details_hash_key" {
   description = "Partition key for the table"
   type        = string
 }
 
-variable "hash_key_type" {
+variable "user_details_hash_key_type" {
   description = "Type of the partition key (S | N | B)"
   type        = string
   default     = "S"

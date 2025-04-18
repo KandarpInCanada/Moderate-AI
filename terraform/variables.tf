@@ -107,17 +107,27 @@ variable "image_metadata_dynamodb_table_name" {
   type        = string
 }
 
+variable "image_metadata_dynamodb_hash_key" {
+  description = "Partition key for the table"
+  type        = string
+}
+
+variable "image_metadata_dynamodb_hash_key_type" {
+  description = "Type of the partition key (S | N | B)"
+  type        = string
+}
+
 variable "user_details_dynamodb_table_name" {
   description = "Name of the DynamoDB table"
   type        = string
 }
 
-variable "dynamodb_hash_key" {
+variable "user_details_dynamodb_hash_key" {
   description = "Partition key for the table"
   type        = string
 }
 
-variable "dynamodb_hash_key_type" {
+variable "user_details_dynamodb_hash_key_type" {
   description = "Type of the partition key (S | N | B)"
   type        = string
 }

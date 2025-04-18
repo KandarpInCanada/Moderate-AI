@@ -23,19 +23,19 @@ module "vpc" {
 }
 
 module "image_metadata_dynamodb" {
-  source                    = "./modules/dynamodb/image_metadata"
-  image_metadata_table_name = var.image_metadata_dynamodb_table_name
-  hash_key                  = var.dynamodb_hash_key
-  hash_key_type             = var.dynamodb_hash_key_type
-  tags                      = var.tags
+  source                       = "./modules/dynamodb/image_metadata"
+  image_metadata_table_name    = var.image_metadata_dynamodb_table_name
+  image_metadata_hash_key      = var.image_metadata_dynamodb_hash_key
+  image_metadata_hash_key_type = var.image_metadata_dynamodb_hash_key_type
+  tags                         = var.tags
 }
 
 module "user_details_dynamodb" {
-  source                    = "./modules/dynamodb/image_metadata"
-  image_metadata_table_name = var.user_details_dynamodb_table_name
-  hash_key                  = var.dynamodb_hash_key
-  hash_key_type             = var.dynamodb_hash_key_type
-  tags                      = var.tags
+  source                     = "./modules/dynamodb/user_details"
+  user_table_name            = var.user_details_dynamodb_table_name
+  user_details_hash_key      = var.user_details_dynamodb_hash_key
+  user_details_hash_key_type = var.user_details_dynamodb_hash_key_type
+  tags                       = var.tags
 }
 
 module "ecs_iam" {
