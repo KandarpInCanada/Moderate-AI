@@ -99,6 +99,30 @@ resource "aws_iam_policy" "s3_access" {
   })
 }
 
+#######################
+# Policy: SNS
+#######################
+resource "aws_iam_policy" "sns_access" {
+  name        = "${var.lambda_function_name}-sns-policy"
+  description = "Allow publishing and managing user SNS topics"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "sns:CreateTopic",
+          "sns:ListTopics",
+          "sns:Publish"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+
 ########################
 # Attach All Policies
 ########################
@@ -120,4 +144,9 @@ resource "aws_iam_role_policy_attachment" "attach_dynamodb" {
 resource "aws_iam_role_policy_attachment" "attach_s3" {
   role       = aws_iam_role.lambda_exec.name
   policy_arn = aws_iam_policy.s3_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "attach_sns" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.sns_access.arn
 }
