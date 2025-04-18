@@ -38,6 +38,16 @@ module "user_details_dynamodb" {
   tags                       = var.tags
 }
 
+module "notifications_dynamodb" {
+  source                       = "./modules/dynamodb/notifications"
+  notifications_table_name     = var.notifications_dynamodb_table_name
+  notifications_hash_key       = var.notifications_dynamodb_hash_key
+  notifications_hash_key_type  = var.notifications_dynamodb_hash_key_type
+  notifications_range_key      = var.notifications_dynamodb_range_key
+  notifications_range_key_type = var.notifications_dynamodb_range_key_type
+  tags                         = var.tags
+}
+
 module "ecs_iam" {
   source        = "./modules/iam/ecs_iam"
   name_prefix   = "${var.app_name}-${var.aws_environment}"

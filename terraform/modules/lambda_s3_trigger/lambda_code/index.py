@@ -1,15 +1,19 @@
 import boto3
 import os
 import json
+import uuid
+from datetime import datetime
 
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
 sns = boto3.client('sns')
 
-table_name = os.environ['DYNAMODB_TABLE_NAME']
+image_metadata_table_name = os.environ['DYNAMODB_TABLE_NAME']
+notifications_table_name = os.environ.get('NOTIFICATIONS_TABLE_NAME', 'Notifications')
 sns_topic_prefix = os.environ.get('SNS_TOPIC_PREFIX', 'user-notify-')
 
-table = dynamodb.Table(table_name)
+image_metadata_table = dynamodb.Table(image_metadata_table_name)
+notifications_table = dynamodb.Table(notifications_table_name)
 
 def get_or_create_topic(sanitized_email):
     topic_name = f"{sns_topic_prefix}{sanitized_email}"
@@ -49,38 +53,97 @@ def handler(event, context):
 
             sanitized_email = parts[1]
             image_id = key
+            filename = parts[-1]
 
             # Rekognition analysis
-            response = rekognition.detect_labels(
+            labels_response = rekognition.detect_labels(
                 Image={'S3Object': {'Bucket': bucket, 'Name': key}},
-                MaxLabels=5,
-                MinConfidence=80
+                MaxLabels=10,
+                MinConfidence=70
             )
 
-            labels = [label['Name'] for label in response['Labels']]
-            print(f"Detected labels for {key}: {labels}")
+            # Detect faces
+            faces_response = rekognition.detect_faces(
+                Image={'S3Object': {'Bucket': bucket, 'Name': key}},
+                Attributes=['ALL']
+            )
+
+            # Detect text
+            text_response = rekognition.detect_text(
+                Image={'S3Object': {'Bucket': bucket, 'Name': key}}
+            )
+
+            # Process results
+            labels = [{'name': label['Name'], 'confidence': label['Confidence']} 
+                     for label in labels_response['Labels']]
+            
+            face_count = len(faces_response['FaceDetails'])
+            
+            detected_text = [text['DetectedText'] 
+                            for text in text_response['TextDetections'] 
+                            if text['Type'] == 'LINE']
+
+            # Create metadata object
+            timestamp = datetime.now().isoformat()
+            metadata = {
+                'ImageId': image_id,
+                'key': key,
+                'filename': filename,
+                'url': f"https://{bucket}.s3.amazonaws.com/{key}",
+                'labels': [label['name'] for label in labels],
+                'faces': face_count,
+                'location': next((label['name'] for label in labels if label['name'] in 
+                                ['City', 'Town', 'Village', 'Beach', 'Mountain', 'Lake', 'Ocean', 'Park']), ''),
+                'uploadDate': timestamp,
+                'rekognitionDetails': {
+                    'labels': labels,
+                    'faces': face_count,
+                    'text': detected_text,
+                    'celebrities': [],
+                    'analyzedAt': timestamp
+                }
+            }
 
             # Store metadata to DynamoDB
-            table.put_item(Item={
-                'ImageId': image_id,
-                'labels': labels
-            })
-
+            image_metadata_table.put_item(Item=metadata)
             print(f"Metadata successfully stored for {key}")
+
+            # Create notification
+            notification_id = str(uuid.uuid4())
+            notification = {
+                'UserId': sanitized_email,
+                'NotificationId': notification_id,
+                'Title': 'Image Analysis Complete',
+                'Message': f"Your image '{filename}' has been analyzed. Found {face_count} faces and {len(labels)} objects.",
+                'Timestamp': timestamp,
+                'Read': False,
+                'Type': 'success',
+                'ImageId': image_id,
+                'ImageUrl': f"https://{bucket}.s3.amazonaws.com/{key}"
+            }
+
+            # Store notification in DynamoDB
+            notifications_table.put_item(Item=notification)
+            print(f"Notification stored in DynamoDB: {notification_id}")
 
             # Get or create SNS topic, then publish
             topic_arn = get_or_create_topic(sanitized_email)
 
+            # Prepare message for SNS
             message = {
-                "imageId": image_id,
-                "labels": labels,
-                "bucket": bucket
+                'title': 'Image Analysis Complete',
+                'message': f"Your image '{filename}' has been analyzed. Found {face_count} faces and {len(labels)} objects.",
+                'type': 'success',
+                'imageId': image_id,
+                'imageUrl': f"https://{bucket}.s3.amazonaws.com/{key}",
+                'timestamp': timestamp
             }
 
+            # Publish to SNS
             sns.publish(
                 TopicArn=topic_arn,
                 Message=json.dumps(message),
-                Subject=f"Image processed for {sanitized_email}"
+                Subject=f"Image processed: {filename}"
             )
 
             print(f"Notification sent to SNS topic: {topic_arn}")
@@ -90,5 +153,5 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps("Metadata processed and notification sent.")
+        "body": json.dumps("Image processing complete and notifications sent.")
     }

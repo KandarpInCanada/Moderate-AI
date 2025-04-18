@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-client"
+import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb"
+import { unmarshall } from "@aws-sdk/util-dynamodb"
 
-// This is a placeholder API route for fetching notifications
-// In a real application, this would connect to a database or message queue
+// Initialize the DynamoDB client
+const dynamoClient = new DynamoDBClient({
+  region: process.env.NEXT_AWS_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.NEXT_AWS_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.NEXT_AWS_SECRET_ACCESS_KEY || "",
+  },
+})
 
 export async function GET(request: Request) {
   try {
@@ -27,35 +35,48 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
     }
 
-    // In a real application, you would fetch notifications from a database
-    // For now, we'll return some sample notifications
-    const notifications = [
-      {
-        id: "1",
-        title: "Image Analysis Complete",
-        message: "Your recent upload 'family-vacation.jpg' has been analyzed. 4 people detected.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 minutes ago
-        read: false,
-        type: "success",
-        imageId: "users/john_doe_gmail_com/family-vacation.jpg",
+    // Check if DynamoDB is configured
+    if (
+      !process.env.NEXT_AWS_ACCESS_KEY_ID ||
+      !process.env.NEXT_AWS_SECRET_ACCESS_KEY ||
+      !process.env.NEXT_AWS_REGION ||
+      !process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME
+    ) {
+      return NextResponse.json({ error: "Server configuration error: DynamoDB not configured" }, { status: 500 })
+    }
+
+    // Get user identifier (email or ID)
+    const userIdentifier = user.email || user.id
+
+    // Query DynamoDB for user's notifications
+    const params = {
+      TableName: process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME,
+      KeyConditionExpression: "UserId = :userId",
+      ExpressionAttributeValues: {
+        ":userId": { S: userIdentifier },
       },
-      {
-        id: "2",
-        title: "New Features Available",
-        message: "Check out our new AI-powered search capabilities in the gallery.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-        read: false,
-        type: "info",
-      },
-      {
-        id: "3",
-        title: "Storage Warning",
-        message: "You're approaching your storage limit. Consider upgrading your plan.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-        read: true,
-        type: "warning",
-      },
-    ]
+      ScanIndexForward: false, // Sort by sort key in descending order (newest first)
+      Limit: 50, // Limit to 50 notifications
+    }
+
+    const command = new QueryCommand(params)
+    const response = await dynamoClient.send(command)
+
+    // Transform DynamoDB items to notification objects
+    const notifications =
+      response.Items?.map((item) => {
+        const notification = unmarshall(item)
+        return {
+          id: notification.NotificationId,
+          title: notification.Title,
+          message: notification.Message,
+          timestamp: notification.Timestamp,
+          read: notification.Read || false,
+          type: notification.Type || "info",
+          imageId: notification.ImageId,
+          imageUrl: notification.ImageUrl,
+        }
+      }) || []
 
     return NextResponse.json({ notifications })
   } catch (error: any) {
@@ -91,8 +112,22 @@ export async function POST(request: Request) {
     // Parse the request body
     const { notificationIds, markAll } = await request.json()
 
-    // In a real application, you would update the database
-    // For now, we'll just return success
+    // Check if DynamoDB is configured
+    if (
+      !process.env.NEXT_AWS_ACCESS_KEY_ID ||
+      !process.env.NEXT_AWS_SECRET_ACCESS_KEY ||
+      !process.env.NEXT_AWS_REGION ||
+      !process.env.NEXT_NOTIFICATIONS_DYNAMODB_TABLE_NAME
+    ) {
+      return NextResponse.json({ error: "Server configuration error: DynamoDB not configured" }, { status: 500 })
+    }
+
+    // Get user identifier (email or ID)
+    const userIdentifier = user.email || user.id
+
+    // TODO: Implement update logic for DynamoDB to mark notifications as read
+    // This would involve using the UpdateItem command for each notification ID
+    // or a BatchWriteItem command for multiple notifications
 
     return NextResponse.json({
       success: true,
