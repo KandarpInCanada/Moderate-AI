@@ -4,7 +4,7 @@ import { Bell } from "lucide-react";
 import { useNotifications } from "@/context/notifications-context";
 
 export default function NotificationBell() {
-  const { enabled, topicArn } = useNotifications();
+  const { enabled, queueUrl } = useNotifications();
 
   return (
     <div className="relative">
@@ -13,7 +13,7 @@ export default function NotificationBell() {
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
-        {enabled && topicArn && (
+        {enabled && queueUrl && (
           <span className="absolute top-0 right-0 h-2 w-2 bg-green-500 rounded-full"></span>
         )}
       </button>

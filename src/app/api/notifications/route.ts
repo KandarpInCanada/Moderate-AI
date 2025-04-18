@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-client"
+import { receiveMessagesFromQueue, deleteMessageFromQueue } from "@/lib/sqs-client"
 
 export async function GET(request: Request) {
   try {
@@ -24,16 +25,53 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
     }
 
-    // Return empty notifications array since we're not fetching from DynamoDB
-    return NextResponse.json({ notifications: [] })
+    // Get user identifier (email or ID)
+    const userIdentifier = user.email || user.id
+
+    try {
+      // Poll for messages from SQS
+      const messages = await receiveMessagesFromQueue(userIdentifier, 10)
+
+      // Process messages into a more usable format
+      const notifications = messages.map((message) => {
+        try {
+          const body = JSON.parse(message.Body || "{}")
+          return {
+            id: message.MessageId,
+            receiptHandle: message.ReceiptHandle,
+            title: body.title || "Notification",
+            message: body.message || "You have a new notification",
+            type: body.type || "info",
+            timestamp: body.timestamp || new Date().toISOString(),
+            imageId: body.imageId,
+            imageUrl: body.imageUrl,
+          }
+        } catch (e) {
+          // If parsing fails, return a basic notification
+          return {
+            id: message.MessageId,
+            receiptHandle: message.ReceiptHandle,
+            title: "New Notification",
+            message: message.Body || "You have a new notification",
+            type: "info",
+            timestamp: new Date().toISOString(),
+          }
+        }
+      })
+
+      return NextResponse.json({ notifications })
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error)
+      return NextResponse.json({ notifications: [] })
+    }
   } catch (error: any) {
     console.error("Error handling notifications request:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }
 
-// This endpoint is no longer needed but kept for API compatibility
-export async function POST(request: Request) {
+// Delete a notification (message) from the queue
+export async function DELETE(request: Request) {
   try {
     // Get the authorization header
     const authHeader = request.headers.get("Authorization")
@@ -56,13 +94,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
     }
 
-    // Return success response for API compatibility
+    // Parse the request body
+    const { receiptHandle } = await request.json()
+
+    if (!receiptHandle) {
+      return NextResponse.json({ error: "Missing receipt handle" }, { status: 400 })
+    }
+
+    // Get user identifier (email or ID)
+    const userIdentifier = user.email || user.id
+
+    // Delete the message from the queue
+    await deleteMessageFromQueue(userIdentifier, receiptHandle)
+
     return NextResponse.json({
       success: true,
-      message: "Notification settings updated",
+      message: "Notification deleted successfully",
     })
   } catch (error: any) {
-    console.error("Error handling notifications update:", error)
+    console.error("Error deleting notification:", error)
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }

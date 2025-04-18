@@ -114,11 +114,11 @@ resource "aws_iam_policy" "s3_access" {
 }
 
 #######################
-# Policy: SNS
+# Policy: SQS
 #######################
-resource "aws_iam_policy" "sns_access" {
-  name        = "${var.lambda_function_name}-sns-policy"
-  description = "Allow publishing and managing user SNS topics"
+resource "aws_iam_policy" "sqs_access" {
+  name        = "${var.lambda_function_name}-sqs-policy"
+  description = "Allow creating and managing user SQS queues"
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -126,11 +126,14 @@ resource "aws_iam_policy" "sns_access" {
       {
         Effect = "Allow",
         Action = [
-          "sns:CreateTopic",
-          "sns:ListTopics",
-          "sns:ListSubscriptionsByTopic",
-          "sns:Subscribe",
-          "sns:Publish"
+          "sqs:CreateQueue",
+          "sqs:GetQueueUrl",
+          "sqs:GetQueueAttributes",
+          "sqs:SetQueueAttributes",
+          "sqs:ListQueues",
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage"
         ],
         Resource = "*"
       }
@@ -161,7 +164,7 @@ resource "aws_iam_role_policy_attachment" "attach_s3" {
   policy_arn = aws_iam_policy.s3_access.arn
 }
 
-resource "aws_iam_role_policy_attachment" "attach_sns" {
+resource "aws_iam_role_policy_attachment" "attach_sqs" {
   role       = aws_iam_role.lambda_exec.name
-  policy_arn = aws_iam_policy.sns_access.arn
+  policy_arn = aws_iam_policy.sqs_access.arn
 }

@@ -5,23 +5,18 @@ import { useNotifications } from "@/context/notifications-context";
 import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
 
 export default function NotificationSettings() {
-  const {
-    subscribeToSNS,
-    topicArn,
-    isSubscribing,
-    subscriptionError,
-    subscriptionSuccess,
-  } = useNotifications();
+  const { pollForMessages, queueUrl, isPolling, pollingError, pollingSuccess } =
+    useNotifications();
 
-  const [showSubscribeSuccess, setShowSubscribeSuccess] = useState(false);
+  const [showPollSuccess, setShowPollSuccess] = useState(false);
 
-  const handleSubscribe = async () => {
-    await subscribeToSNS();
-    setShowSubscribeSuccess(true);
+  const handlePollForMessages = async () => {
+    await pollForMessages();
+    setShowPollSuccess(true);
 
     // Hide success message after 5 seconds
     setTimeout(() => {
-      setShowSubscribeSuccess(false);
+      setShowPollSuccess(false);
     }, 5000);
   };
 
@@ -55,70 +50,68 @@ export default function NotificationSettings() {
           <NotificationToggle />
         </div>
 
-        {/* SNS Subscription */}
+        {/* SQS Integration */}
         <div className="mb-6">
           <h4 className="text-sm font-medium text-muted-foreground mb-3">
-            AWS SNS Integration
+            AWS SQS Integration
           </h4>
           <div className="bg-muted/50 rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div>
                 <h5 className="text-sm font-medium text-foreground">
-                  Real-time Notifications
+                  Message Queue Notifications
                 </h5>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Subscribe to AWS SNS to receive real-time notifications when
-                  your images are processed
+                  Poll AWS SQS to receive notifications when your images are
+                  processed
                 </p>
-                {topicArn && (
+                {queueUrl && (
                   <p className="text-xs text-muted-foreground mt-2">
-                    Topic ARN: <span className="font-mono">{topicArn}</span>
+                    Queue URL: <span className="font-mono">{queueUrl}</span>
                   </p>
                 )}
               </div>
               <button
-                onClick={handleSubscribe}
-                disabled={isSubscribing}
+                onClick={handlePollForMessages}
+                disabled={isPolling}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center ${
-                  isSubscribing
+                  isPolling
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
               >
-                {isSubscribing ? (
+                {isPolling ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
-                    Subscribing...
+                    Polling...
                   </>
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4 mr-1.5" />
-                    {topicArn ? "Refresh Subscription" : "Subscribe"}
+                    Poll for Messages
                   </>
                 )}
               </button>
             </div>
 
-            {/* Subscription status messages */}
-            {subscriptionError && (
+            {/* Polling status messages */}
+            {pollingError && (
               <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-md p-2 flex items-start">
                 <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 mr-2 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-red-700 dark:text-red-400">
-                    {subscriptionError}
+                    {pollingError}
                   </p>
 
-                  {extractMissingVars(subscriptionError) && (
+                  {extractMissingVars(pollingError) && (
                     <div className="mt-2">
                       <p className="text-xs font-medium text-red-700 dark:text-red-400">
                         Please add these environment variables to your project:
                       </p>
                       <ul className="text-xs text-red-700 dark:text-red-400 mt-1 list-disc list-inside">
-                        {extractMissingVars(subscriptionError)?.map(
-                          (variable) => (
-                            <li key={variable}>{variable}</li>
-                          )
-                        )}
+                        {extractMissingVars(pollingError)?.map((variable) => (
+                          <li key={variable}>{variable}</li>
+                        ))}
                       </ul>
                     </div>
                   )}
@@ -126,11 +119,11 @@ export default function NotificationSettings() {
               </div>
             )}
 
-            {(showSubscribeSuccess || subscriptionSuccess) && (
+            {(showPollSuccess || pollingSuccess) && (
               <div className="mt-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-md p-2 flex items-start">
                 <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 mr-2 flex-shrink-0" />
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Successfully subscribed to SNS notifications using HTTP
+                  Successfully polled SQS queue for notifications
                 </p>
               </div>
             )}
@@ -140,14 +133,14 @@ export default function NotificationSettings() {
         {/* Info about notifications */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
           <h4 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">
-            About AWS SNS Notifications
+            About AWS SQS Notifications
           </h4>
           <p className="text-sm text-blue-700 dark:text-blue-500">
             When you upload images to PhotoSense, they are automatically
             analyzed by AWS Rekognition to detect objects, faces, text, and
-            more. With AWS SNS integration, you'll receive real-time
-            notifications when this analysis is complete, including details
-            about what was detected in your images.
+            more. With AWS SQS integration, you'll receive notifications when
+            this analysis is complete, including details about what was detected
+            in your images.
           </p>
         </div>
       </div>

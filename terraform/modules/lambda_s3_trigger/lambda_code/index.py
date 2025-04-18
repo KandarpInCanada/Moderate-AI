@@ -7,34 +7,36 @@ from decimal import Decimal
 
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
-sns = boto3.client('sns')
+sqs = boto3.client('sqs')
 
 image_metadata_table_name = os.environ['DYNAMODB_TABLE_NAME']
 notifications_table_name = os.environ['NOTIFICATIONS_TABLE_NAME']
-sns_topic_prefix = os.environ['SNS_TOPIC_PREFIX']
+sqs_queue_prefix = os.environ['SQS_QUEUE_PREFIX']
 
 image_metadata_table = dynamodb.Table(image_metadata_table_name)
 notifications_table = dynamodb.Table(notifications_table_name)
 
-def get_or_create_topic(sanitized_email):
-    topic_name = f"{sns_topic_prefix}{sanitized_email}"
-
-    # Check if topic already exists
-    response = sns.list_topics()
-    topic_arn = None
-
-    for topic in response.get('Topics', []):
-        if topic_name in topic['TopicArn']:
-            topic_arn = topic['TopicArn']
-            break
-
-    # If not found, create it
-    if not topic_arn:
-        create_response = sns.create_topic(Name=topic_name)
-        topic_arn = create_response['TopicArn']
-        print(f"Created SNS topic: {topic_arn}")
-
-    return topic_arn
+def get_or_create_queue(sanitized_email):
+    queue_name = f"{sqs_queue_prefix}{sanitized_email}"
+    
+    # Check if queue already exists
+    try:
+        response = sqs.get_queue_url(QueueName=queue_name)
+        queue_url = response['QueueUrl']
+        print(f"Found existing SQS queue: {queue_url}")
+    except sqs.exceptions.QueueDoesNotExist:
+        # Create the queue if it doesn't exist
+        response = sqs.create_queue(
+            QueueName=queue_name,
+            Attributes={
+                'MessageRetentionPeriod': '86400',  # 1 day retention
+                'VisibilityTimeout': '60'  # 60 seconds
+            }
+        )
+        queue_url = response['QueueUrl']
+        print(f"Created new SQS queue: {queue_url}")
+    
+    return queue_url
 
 # Helper function to convert floats to Decimals in a nested structure
 def convert_floats_to_decimals(obj):
@@ -141,10 +143,10 @@ def handler(event, context):
             notifications_table.put_item(Item=notification)
             print(f"Notification stored in DynamoDB: {notification_id}")
 
-            # Get or create SNS topic, then publish
-            topic_arn = get_or_create_topic(sanitized_email)
+            # Get or create SQS queue, then send message
+            queue_url = get_or_create_queue(sanitized_email)
 
-            # Prepare message for SNS - No need to convert to Decimal for SNS
+            # Prepare message for SQS
             message = {
                 'title': 'Image Analysis Complete',
                 'message': f"Your image '{filename}' has been analyzed. Found {face_count} faces and {len(labels)} objects.",
@@ -154,14 +156,19 @@ def handler(event, context):
                 'timestamp': timestamp
             }
 
-            # Publish to SNS
-            sns.publish(
-                TopicArn=topic_arn,
-                Message=json.dumps(message),
-                Subject=f"Image processed: {filename}"
+            # Send to SQS
+            response = sqs.send_message(
+                QueueUrl=queue_url,
+                MessageBody=json.dumps(message),
+                MessageAttributes={
+                    'MessageType': {
+                        'DataType': 'String',
+                        'StringValue': 'Notification'
+                    }
+                }
             )
 
-            print(f"Notification sent to SNS topic: {topic_arn}")
+            print(f"Message sent to SQS queue: {queue_url}, MessageId: {response['MessageId']}")
 
         except Exception as e:
             print(f"Error processing file {record['s3']['object']['key']}: {e}")
@@ -171,5 +178,5 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps("Image processing complete and notifications sent.")
+        "body": json.dumps("Image processing complete and notifications sent to SQS.")
     }

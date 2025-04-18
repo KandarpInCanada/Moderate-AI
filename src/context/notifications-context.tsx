@@ -10,26 +10,26 @@ import {
   useEffect,
 } from "react";
 import { useAuth } from "@/context/auth-context";
-import { getUserTopicArn } from "@/lib/sns-client";
+import { getUserQueueUrl } from "@/lib/sqs-client";
 
 type NotificationsContextType = {
   enabled: boolean;
   setEnabled: (enabled: boolean) => void;
-  subscribeToSNS: () => Promise<void>;
-  topicArn: string | null;
-  isSubscribing: boolean;
-  subscriptionError: string | null;
-  subscriptionSuccess: boolean;
+  pollForMessages: () => Promise<void>;
+  queueUrl: string | null;
+  isPolling: boolean;
+  pollingError: string | null;
+  pollingSuccess: boolean;
 };
 
 const NotificationsContext = createContext<NotificationsContextType>({
   enabled: true,
   setEnabled: () => {},
-  subscribeToSNS: async () => {},
-  topicArn: null,
-  isSubscribing: false,
-  subscriptionError: null,
-  subscriptionSuccess: false,
+  pollForMessages: async () => {},
+  queueUrl: null,
+  isPolling: false,
+  pollingError: null,
+  pollingSuccess: false,
 });
 
 export const NotificationsProvider = ({
@@ -38,13 +38,10 @@ export const NotificationsProvider = ({
   children: React.ReactNode;
 }) => {
   const [enabled, setEnabled] = useState<boolean>(true);
-  const [topicArn, setTopicArn] = useState<string | null>(null);
-  const [isSubscribing, setIsSubscribing] = useState<boolean>(false);
-  const [subscriptionError, setSubscriptionError] = useState<string | null>(
-    null
-  );
-  const [subscriptionSuccess, setSubscriptionSuccess] =
-    useState<boolean>(false);
+  const [queueUrl, setQueueUrl] = useState<string | null>(null);
+  const [isPolling, setIsPolling] = useState<boolean>(false);
+  const [pollingError, setPollingError] = useState<string | null>(null);
+  const [pollingSuccess, setPollingSuccess] = useState<boolean>(false);
   const { user, session } = useAuth();
 
   // Load enabled state from localStorage on mount
@@ -57,10 +54,10 @@ export const NotificationsProvider = ({
         setEnabled(storedEnabled === "true");
       }
 
-      // Set the topic ARN for the user
+      // Set the queue URL for the user
       if (user.email) {
-        const arn = getUserTopicArn(user.email);
-        setTopicArn(arn);
+        const url = getUserQueueUrl(user.email);
+        setQueueUrl(url);
       }
     }
   }, [user]);
@@ -75,40 +72,26 @@ export const NotificationsProvider = ({
     }
   }, [enabled, user]);
 
-  // Subscribe to SNS topic
-  const subscribeToSNS = useCallback(async () => {
+  // Poll for messages from SQS queue
+  const pollForMessages = useCallback(async () => {
     if (!user || !session?.access_token) return;
 
-    setIsSubscribing(true);
-    setSubscriptionError(null);
-    setSubscriptionSuccess(false);
+    setIsPolling(true);
+    setPollingError(null);
+    setPollingSuccess(false);
 
     try {
-      // For web applications, we'll use an HTTPS endpoint
-      // Make sure the endpoint is a complete URL with https:// protocol
-      // Create an HTTP endpoint by replacing https with http in the origin
-      const httpOrigin = window.location.origin.replace("https://", "http://");
-      const endpoint = new URL(
-        "/api/notifications/webhook",
-        httpOrigin
-      ).toString();
-      console.log(`Using endpoint for subscription: ${endpoint}`);
-
-      const response = await fetch("/api/notifications/subscribe", {
+      const response = await fetch("/api/notifications/poll", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          endpoint,
-          protocol: "http", // Changed from "https" to "http"
-        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Subscription error response:", errorData);
+        console.error("Polling error response:", errorData);
 
         // Check if we have detailed information about missing variables
         if (
@@ -116,32 +99,28 @@ export const NotificationsProvider = ({
           errorData.missingVariables.length > 0
         ) {
           throw new Error(
-            `SNS not configured. Missing environment variables: ${errorData.missingVariables.join(
+            `SQS not configured. Missing environment variables: ${errorData.missingVariables.join(
               ", "
             )}`
           );
         }
 
-        throw new Error(
-          errorData.error || "Failed to subscribe to notifications"
-        );
+        throw new Error(errorData.error || "Failed to poll for notifications");
       }
 
       const data = await response.json();
-      console.log("Subscription success response:", data);
+      console.log("Polling success response:", data);
 
-      if (data.topicArn) {
-        setTopicArn(data.topicArn);
+      if (data.queueUrl) {
+        setQueueUrl(data.queueUrl);
       }
 
-      setSubscriptionSuccess(true);
+      setPollingSuccess(true);
     } catch (error: any) {
-      console.error("Error subscribing to SNS:", error);
-      setSubscriptionError(
-        error.message || "Failed to subscribe to notifications"
-      );
+      console.error("Error polling SQS:", error);
+      setPollingError(error.message || "Failed to poll for notifications");
     } finally {
-      setIsSubscribing(false);
+      setIsPolling(false);
     }
   }, [user, session]);
 
@@ -150,11 +129,11 @@ export const NotificationsProvider = ({
       value={{
         enabled,
         setEnabled,
-        subscribeToSNS,
-        topicArn,
-        isSubscribing,
-        subscriptionError,
-        subscriptionSuccess,
+        pollForMessages,
+        queueUrl,
+        isPolling,
+        pollingError,
+        pollingSuccess,
       }}
     >
       {children}
