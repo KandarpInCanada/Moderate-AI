@@ -6,6 +6,7 @@ import {
   Settings,
   Moon,
   Sun,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -87,6 +88,19 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
               >
                 <Upload className="mr-3 h-5 w-5" />
                 Upload Images
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/notifications"
+                className={`flex w-full items-center px-3 py-2.5 rounded-lg font-medium transition-all ${
+                  isActive("/notifications")
+                    ? "text-primary bg-primary/10"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Bell className="mr-3 h-5 w-5" />
+                Notifications
               </Link>
             </li>
             <li>
