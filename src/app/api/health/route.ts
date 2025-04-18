@@ -36,7 +36,6 @@ export async function GET() {
         process.env.NEXT_AWS_SECRET_ACCESS_KEY &&
         process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME
       ) {
-        // Try to describe the UserDetails table
         const command = new DescribeTableCommand({
           TableName: process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME,
         })
