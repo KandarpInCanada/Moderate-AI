@@ -1,14 +1,30 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import NotificationToggle from "./notification-toggle";
 import { useNotifications } from "@/context/notifications-context";
-import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle, RefreshCw, Bell, Clock } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
+import NotificationsList from "@/components/notifications/notifications-list";
 
 export default function NotificationSettings() {
-  const { pollForMessages, queueUrl, isPolling, pollingError, pollingSuccess } =
-    useNotifications();
-
+  const {
+    pollForMessages,
+    queueUrl,
+    isPolling,
+    pollingError,
+    pollingSuccess,
+    notifications,
+  } = useNotifications();
   const [showPollSuccess, setShowPollSuccess] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+
+  // Get recent notifications
+  useEffect(() => {
+    if (notifications.length > 0) {
+      setRecentNotifications(notifications.slice(0, 3));
+    }
+  }, [notifications]);
 
   const handlePollForMessages = async () => {
     await pollForMessages();
@@ -35,6 +51,24 @@ export default function NotificationSettings() {
     return null;
   };
 
+  // Format date for recent notifications
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+    const diffHours = Math.round(diffMins / 60);
+    const diffDays = Math.round(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+    return date.toLocaleDateString();
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-foreground mb-6">
@@ -48,6 +82,62 @@ export default function NotificationSettings() {
             Global Settings
           </h4>
           <NotificationToggle />
+        </div>
+
+        {/* Recent Notifications */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium text-muted-foreground">
+              Recent Notifications
+            </h4>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="text-xs text-primary hover:underline flex items-center"
+            >
+              <Bell className="h-3 w-3 mr-1" />
+              View All
+            </button>
+          </div>
+
+          <div className="bg-muted/50 rounded-lg overflow-hidden">
+            {recentNotifications.length > 0 ? (
+              <div className="divide-y divide-border">
+                {recentNotifications.map((notification) => (
+                  <div key={notification.id} className="p-3 hover:bg-muted/80">
+                    <div className="flex items-start">
+                      <div className="mr-2 mt-0.5">
+                        {notification.type === "success" ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : notification.type === "error" ? (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        ) : (
+                          <Bell className="h-4 w-4 text-primary" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-foreground">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {formatDate(notification.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No recent notifications
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* SQS Integration */}
@@ -144,6 +234,15 @@ export default function NotificationSettings() {
           </p>
         </div>
       </div>
+
+      {/* Notifications Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="All Notifications"
+      >
+        <NotificationsList />
+      </Modal>
     </div>
   );
 }

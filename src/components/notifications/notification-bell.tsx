@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useNotifications } from "@/context/notifications-context";
 import { Modal } from "@/components/ui/modal";
@@ -8,12 +8,32 @@ import NotificationsList from "./notifications-list";
 
 export default function NotificationBell() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { enabled, queueUrl, notifications, pollForMessages } =
-    useNotifications();
+  const {
+    enabled,
+    notifications,
+    pollForMessages,
+    hasUnreadNotifications,
+    setHasUnreadNotifications,
+  } = useNotifications();
+
+  // Poll for notifications when component mounts
+  useEffect(() => {
+    if (enabled) {
+      pollForMessages();
+
+      // Set up polling interval
+      const interval = setInterval(() => {
+        pollForMessages();
+      }, 60000); // Poll every minute
+
+      return () => clearInterval(interval);
+    }
+  }, [enabled, pollForMessages]);
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
-    pollForMessages();
+    // Mark notifications as read when opening the modal
+    setHasUnreadNotifications(false);
   };
 
   return (
@@ -24,8 +44,8 @@ export default function NotificationBell() {
         aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
-        {enabled && queueUrl && notifications.length > 0 && (
-          <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
+        {enabled && hasUnreadNotifications && (
+          <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse"></span>
         )}
       </button>
 

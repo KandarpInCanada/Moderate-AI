@@ -1,72 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, AlertCircle, Info, Trash2, Bell } from "lucide-react";
+import {
+  CheckCircle,
+  AlertCircle,
+  Info,
+  Trash2,
+  Bell,
+  RefreshCw,
+} from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/context/notifications-context";
 
 export default function NotificationsList() {
   const { user, session } = useAuth();
-  const { notifications, setNotifications, pollForMessages } =
-    useNotifications();
+  const {
+    notifications,
+    fetchNotifications,
+    deleteNotification,
+    markAllAsRead,
+    isPolling,
+  } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch notifications on mount
+  // Fetch notifications on mount and mark as read
   useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    if (!user || !session?.access_token) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/notifications", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch notifications");
+    const loadNotifications = async () => {
+      setLoading(true);
+      try {
+        await fetchNotifications();
+        markAllAsRead();
+      } catch (err: any) {
+        setError(err.message || "Failed to load notifications");
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const data = await response.json();
-      setNotifications(data.notifications || []);
-    } catch (err: any) {
-      console.error("Error fetching notifications:", err);
-      setError(err.message || "Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Delete a notification
-  const deleteNotification = async (receiptHandle: string) => {
-    if (!user || !session?.access_token) return;
-
-    try {
-      await fetch("/api/notifications", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ receiptHandle }),
-      });
-
-      // Remove from local state
-      setNotifications(
-        notifications.filter((n) => n.receiptHandle !== receiptHandle)
-      );
-    } catch (err) {
-      console.error("Error deleting notification:", err);
-    }
-  };
+    loadNotifications();
+  }, [fetchNotifications, markAllAsRead]);
 
   // Get icon based on notification type
   const getNotificationIcon = (type: string) => {
@@ -98,7 +71,19 @@ export default function NotificationsList() {
     return date.toLocaleDateString();
   };
 
-  if (loading) {
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await fetchNotifications();
+    } catch (err: any) {
+      setError(err.message || "Failed to refresh notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || isPolling) {
     return (
       <div className="p-4 text-center">
         <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -115,7 +100,7 @@ export default function NotificationsList() {
         <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
         <p className="text-sm text-red-500">{error}</p>
         <button
-          onClick={fetchNotifications}
+          onClick={handleRefresh}
           className="mt-2 text-xs text-primary hover:underline"
         >
           Try again
@@ -130,7 +115,7 @@ export default function NotificationsList() {
         <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">No notifications yet</p>
         <button
-          onClick={fetchNotifications}
+          onClick={handleRefresh}
           className="mt-2 text-xs text-primary hover:underline"
         >
           Refresh
@@ -141,60 +126,65 @@ export default function NotificationsList() {
 
   return (
     <div>
-      {notifications.map((notification) => (
-        <div
-          key={notification.id}
-          className="p-4 border-b border-border hover:bg-muted/50"
-        >
-          <div className="flex">
-            <div className="mr-3 mt-0.5">
-              {getNotificationIcon(notification.type)}
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <h4 className="text-sm font-medium text-foreground">
-                  {notification.title}
-                </h4>
-                <button
-                  onClick={() => deleteNotification(notification.receiptHandle)}
-                  className="text-muted-foreground hover:text-foreground ml-2"
-                  title="Delete notification"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+      <div className="max-h-[60vh] overflow-y-auto">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className="p-4 border-b border-border hover:bg-muted/50"
+          >
+            <div className="flex">
+              <div className="mr-3 mt-0.5">
+                {getNotificationIcon(notification.type)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {notification.message}
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                {formatDate(notification.timestamp)}
-              </p>
-
-              {notification.imageUrl && (
-                <div className="mt-2">
-                  <a
-                    href={notification.imageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full h-20 bg-muted rounded-md overflow-hidden"
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-sm font-medium text-foreground">
+                    {notification.title}
+                  </h4>
+                  <button
+                    onClick={() =>
+                      deleteNotification(notification.receiptHandle)
+                    }
+                    className="text-muted-foreground hover:text-foreground ml-2"
+                    title="Delete notification"
                   >
-                    <img
-                      src={notification.imageUrl || "/placeholder.svg"}
-                      alt="Notification image"
-                      className="w-full h-full object-cover"
-                    />
-                  </a>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {notification.message}
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formatDate(notification.timestamp)}
+                </p>
+
+                {notification.imageUrl && (
+                  <div className="mt-2">
+                    <a
+                      href={notification.imageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full h-20 bg-muted rounded-md overflow-hidden"
+                    >
+                      <img
+                        src={notification.imageUrl || "/placeholder.svg"}
+                        alt="Notification image"
+                        className="w-full h-full object-cover"
+                      />
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
       <div className="p-3 text-center border-t border-border">
         <button
-          onClick={fetchNotifications}
-          className="text-xs text-primary hover:underline"
+          onClick={handleRefresh}
+          className="inline-flex items-center text-xs text-primary hover:underline"
         >
+          <RefreshCw className="h-3 w-3 mr-1" />
           Refresh notifications
         </button>
       </div>

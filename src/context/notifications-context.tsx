@@ -22,6 +22,11 @@ type NotificationsContextType = {
   pollingSuccess: boolean;
   notifications: any[];
   setNotifications: (notifications: any[]) => void;
+  hasUnreadNotifications: boolean;
+  setHasUnreadNotifications: (hasUnread: boolean) => void;
+  markAllAsRead: () => void;
+  deleteNotification: (receiptHandle: string) => Promise<void>;
+  fetchNotifications: () => Promise<any[]>;
 };
 
 const NotificationsContext = createContext<NotificationsContextType>({
@@ -34,6 +39,11 @@ const NotificationsContext = createContext<NotificationsContextType>({
   pollingSuccess: false,
   notifications: [],
   setNotifications: () => {},
+  hasUnreadNotifications: false,
+  setHasUnreadNotifications: () => {},
+  markAllAsRead: () => {},
+  deleteNotification: async () => {},
+  fetchNotifications: async () => [],
 });
 
 export const NotificationsProvider = ({
@@ -48,6 +58,9 @@ export const NotificationsProvider = ({
   const [pollingSuccess, setPollingSuccess] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [lastPolled, setLastPolled] = useState<number>(0);
+  const [hasUnreadNotifications, setHasUnreadNotifications] =
+    useState<boolean>(false);
+  const [lastNotificationCount, setLastNotificationCount] = useState<number>(0);
   const { user, session } = useAuth();
 
   // Load enabled state from localStorage on mount
@@ -65,6 +78,9 @@ export const NotificationsProvider = ({
         const url = getUserQueueUrl(user.email);
         setQueueUrl(url);
       }
+
+      // Fetch notifications on initial load
+      fetchNotifications();
     }
   }, [user]);
 
@@ -78,7 +94,7 @@ export const NotificationsProvider = ({
     }
   }, [enabled, user]);
 
-  // Fetch notifications
+  // Fetch notifications from both DynamoDB and SQS
   const fetchNotifications = useCallback(async () => {
     if (!user || !session?.access_token) return [];
 
@@ -94,13 +110,52 @@ export const NotificationsProvider = ({
       }
 
       const data = await response.json();
-      setNotifications(data.notifications || []);
-      return data.notifications || [];
+      const newNotifications = data.notifications || [];
+
+      // Check if we have new notifications
+      if (newNotifications.length > lastNotificationCount) {
+        setHasUnreadNotifications(true);
+        setLastNotificationCount(newNotifications.length);
+      }
+
+      setNotifications(newNotifications);
+      return newNotifications;
     } catch (err: any) {
       console.error("Error fetching notifications:", err);
       return [];
     }
-  }, [user, session]);
+  }, [user, session, lastNotificationCount]);
+
+  // Delete a notification
+  const deleteNotification = useCallback(
+    async (receiptHandle: string) => {
+      if (!user || !session?.access_token) return;
+
+      try {
+        await fetch("/api/notifications", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ receiptHandle }),
+        });
+
+        // Remove from local state
+        setNotifications((prev) =>
+          prev.filter((n) => n.receiptHandle !== receiptHandle)
+        );
+      } catch (err) {
+        console.error("Error deleting notification:", err);
+      }
+    },
+    [user, session]
+  );
+
+  // Mark all notifications as read
+  const markAllAsRead = useCallback(() => {
+    setHasUnreadNotifications(false);
+  }, []);
 
   // Poll for messages from SQS queue
   const pollForMessages = useCallback(async () => {
@@ -149,30 +204,20 @@ export const NotificationsProvider = ({
       setLastPolled(Date.now());
 
       // Fetch notifications after successful polling
-      await fetchNotifications();
+      const newNotifications = await fetchNotifications();
+
+      // Check if we have new notifications since last poll
+      if (newNotifications.length > lastNotificationCount) {
+        setHasUnreadNotifications(true);
+        setLastNotificationCount(newNotifications.length);
+      }
     } catch (error: any) {
       console.error("Error polling SQS:", error);
       setPollingError(error.message || "Failed to poll for notifications");
     } finally {
       setIsPolling(false);
     }
-  }, [user, session, enabled, fetchNotifications]);
-
-  // Auto-poll for messages every 30 seconds if enabled
-  useEffect(() => {
-    if (!enabled || !user) return;
-
-    // Initial poll when component mounts
-    if (lastPolled === 0) {
-      pollForMessages();
-    }
-
-    const interval = setInterval(() => {
-      pollForMessages();
-    }, 30000); // Poll every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [enabled, user, pollForMessages, lastPolled]);
+  }, [user, session, enabled, fetchNotifications, lastNotificationCount]);
 
   return (
     <NotificationsContext.Provider
@@ -186,6 +231,11 @@ export const NotificationsProvider = ({
         pollingSuccess,
         notifications,
         setNotifications,
+        hasUnreadNotifications,
+        setHasUnreadNotifications,
+        markAllAsRead,
+        deleteNotification,
+        fetchNotifications,
       }}
     >
       {children}

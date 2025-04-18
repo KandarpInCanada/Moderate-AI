@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
     // Store user data in DynamoDB
     const params = {
-      TableName: process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME || "UserDetails",
+      TableName: process.env.NEXT_PUBLIC_USER_DETAILS_DYNAMODB_TABLE_NAME || "UserDetails",
       Item: marshall(userData),
     }
 

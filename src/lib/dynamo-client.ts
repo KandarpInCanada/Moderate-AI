@@ -19,7 +19,7 @@ export const isConfigured = () => {
     process.env.NEXT_AWS_ACCESS_KEY_ID &&
     process.env.NEXT_AWS_SECRET_ACCESS_KEY &&
     process.env.NEXT_PUBLIC_AWS_REGION &&
-    process.env.NEXT_USER_DETAILS_DYNAMODB_TABLE_NAME
+    process.env.NEXT_PUBLIC_USER_DETAILS_DYNAMODB_TABLE_NAME
   )
 }
 
