@@ -2,14 +2,15 @@
 
 import {
   Search,
-  SlidersHorizontal,
   Tag,
   Users,
   MapPin,
   Text,
   ImageIcon,
+  Filter,
 } from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
+import { motion } from "framer-motion";
 
 interface GalleryFiltersProps {
   activeFilter: ModerationStatus;
@@ -33,7 +34,12 @@ export default function GalleryFilters({
   onSortChange,
 }: GalleryFiltersProps) {
   return (
-    <div className="bg-card rounded-xl shadow-sm border border-border p-5 mb-6 transition-all hover:shadow-md">
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="bg-card rounded-xl shadow-sm border border-border p-5 mb-6 transition-all hover:shadow-md"
+    >
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         {/* Search */}
         <div className="relative flex-1">
@@ -51,7 +57,9 @@ export default function GalleryFilters({
 
         {/* Filter tabs */}
         <div className="flex space-x-1 bg-muted p-1 rounded-lg">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onFilterChange("all")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               activeFilter === "all"
@@ -61,8 +69,10 @@ export default function GalleryFilters({
           >
             <ImageIcon className="h-3.5 w-3.5 mr-1 inline-block" />
             All
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onFilterChange("approved")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "approved"
@@ -72,8 +82,10 @@ export default function GalleryFilters({
           >
             <Users className="h-3.5 w-3.5 mr-1" />
             People
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onFilterChange("flagged")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "flagged"
@@ -83,8 +95,10 @@ export default function GalleryFilters({
           >
             <Tag className="h-3.5 w-3.5 mr-1" />
             Objects
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onFilterChange("pending")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "pending"
@@ -94,8 +108,10 @@ export default function GalleryFilters({
           >
             <MapPin className="h-3.5 w-3.5 mr-1" />
             Places
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => onFilterChange("text")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "text"
@@ -105,12 +121,12 @@ export default function GalleryFilters({
           >
             <Text className="h-3.5 w-3.5 mr-1" />
             Text
-          </button>
+          </motion.button>
         </div>
 
         {/* Sort dropdown */}
         <div className="flex items-center">
-          <SlidersHorizontal className="h-5 w-5 text-muted-foreground mr-2" />
+          <Filter className="h-5 w-5 text-muted-foreground mr-2" />
           <select
             value={sortBy}
             onChange={(e) =>
@@ -124,6 +140,6 @@ export default function GalleryFilters({
           </select>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -4,11 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import GalleryGrid from "./gallery-grid";
-import GalleryFilters from "./gallery-filters";
-import ImageDetailView from "./image-detail-view";
 import type { ImageMetadata } from "@/types/image";
 import useSWR from "swr";
 import { Suspense } from "react";
+import ImageDetailView from "./image-detail-view";
 
 // Status types for filtering
 export type ModerationStatus =
@@ -29,13 +28,21 @@ const fetcher = async (url: string, token: string) => {
   return res.json();
 };
 
-export default function GalleryContainer() {
+interface GalleryContainerProps {
+  activeCollection?: string | null;
+}
+
+export default function GalleryContainer({
+  activeCollection,
+}: GalleryContainerProps) {
+  // We'll keep these states but they won't be controlled by the removed filter component
   const [activeFilter, setActiveFilter] = useState<ModerationStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
   const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
     null
   );
+  const [filteredImages, setFilteredImages] = useState<ImageMetadata[]>([]);
 
   const { user, loading: authLoading, session } = useAuth();
   const router = useRouter();
@@ -58,6 +65,65 @@ export default function GalleryContainer() {
     }
   );
 
+  // Filter images based on active collection
+  useEffect(() => {
+    if (!data?.images) {
+      setFilteredImages([]);
+      return;
+    }
+
+    if (!activeCollection) {
+      // No collection filter, show all images
+      setFilteredImages(data.images);
+      return;
+    }
+
+    // Filter based on collection type
+    let filtered: ImageMetadata[] = [];
+
+    if (activeCollection === "people") {
+      // People collection
+      filtered = data.images.filter(
+        (img: ImageMetadata) => img.faces && img.faces > 0
+      );
+    } else if (activeCollection.startsWith("location-")) {
+      // Location collection
+      const locationName = activeCollection
+        .replace("location-", "")
+        .replace(/-/g, " ");
+      filtered = data.images.filter(
+        (img: ImageMetadata) =>
+          img.location && img.location.toLowerCase() === locationName
+      );
+    } else if (activeCollection.startsWith("label-")) {
+      // Label collection
+      const labelName = activeCollection
+        .replace("label-", "")
+        .replace(/-/g, " ");
+      filtered = data.images.filter(
+        (img: ImageMetadata) =>
+          img.labels &&
+          img.labels.some((label: string) => label.toLowerCase() === labelName)
+      );
+    } else if (activeCollection.startsWith("date-")) {
+      // Date collection
+      const dateName = activeCollection.replace("date-", "").replace(/-/g, " ");
+      filtered = data.images.filter((img: ImageMetadata) => {
+        try {
+          const date = new Date(img.lastModified);
+          const monthYear = `${date
+            .toLocaleString("default", { month: "long" })
+            .toLowerCase()} ${date.getFullYear()}`;
+          return monthYear.toLowerCase() === dateName.toLowerCase();
+        } catch (e) {
+          return false;
+        }
+      });
+    }
+
+    setFilteredImages(filtered);
+  }, [data, activeCollection]);
+
   // Refresh data when filter changes
   useEffect(() => {
     if (token) {
@@ -79,16 +145,6 @@ export default function GalleryContainer() {
         />
       ) : (
         <>
-          {/* Filters */}
-          <GalleryFilters
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-          />
-
           {/* Error message */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
@@ -119,7 +175,9 @@ export default function GalleryContainer() {
               activeFilter={activeFilter}
               searchQuery={searchQuery}
               sortBy={sortBy}
-              images={data?.images || []}
+              images={
+                filteredImages.length > 0 ? filteredImages : data?.images || []
+              }
               loading={isLoading}
               onSelectImage={setSelectedImage}
             />

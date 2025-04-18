@@ -16,6 +16,7 @@ import type { ModerationStatus } from "./gallery-container";
 import type { ImageMetadata } from "@/types/image";
 import { refreshImageUrl } from "@/lib/s3-client";
 import { useInView } from "react-intersection-observer";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface GalleryGridProps {
   activeFilter: ModerationStatus;
@@ -54,28 +55,6 @@ export default function GalleryGrid({
     setIsClient(true);
   }, []);
 
-  // Load more images when scrolling to the bottom
-  useEffect(() => {
-    if (inView && filteredAndSortedImages.length > visibleCount) {
-      setVisibleCount((prev) =>
-        Math.min(prev + 12, filteredAndSortedImages.length)
-      );
-    }
-  }, [inView]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (showDropdownId) {
-        setShowDropdownId(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showDropdownId]);
-
-  // Memoize filtered and sorted images to avoid recalculating on every render
   const filteredAndSortedImages = useMemo(() => {
     if (!isClient || !images.length) return [];
 
@@ -145,6 +124,34 @@ export default function GalleryGrid({
       }
     });
   }, [isClient, images, activeFilter, searchQuery, activeLabel, sortBy]);
+
+  // Load more images when scrolling to the bottom
+  useEffect(() => {
+    if (inView && filteredAndSortedImages.length > visibleCount) {
+      // Use requestAnimationFrame to avoid layout thrashing
+      const timeoutId = setTimeout(() => {
+        requestAnimationFrame(() => {
+          setVisibleCount((prev) =>
+            Math.min(prev + 12, filteredAndSortedImages.length)
+          );
+        });
+      }, 100); // Small delay to batch updates
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [inView, filteredAndSortedImages.length, visibleCount]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showDropdownId) {
+        setShowDropdownId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdownId]);
 
   // Get visible images based on current count
   const visibleImages = useMemo(() => {
@@ -292,13 +299,27 @@ export default function GalleryGrid({
     );
   }
 
-  // Show loading state
+  // Optimize the loading state with more efficient skeleton UI
   if (loading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-muted-foreground">Loading your images...</p>
+      <div className="min-h-[400px] animate-fade-in">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={`skeleton-image-${i}`}
+              className="bg-card rounded-xl shadow-sm border border-border overflow-hidden"
+            >
+              <div className="aspect-square bg-muted skeleton-loading"></div>
+              <div className="p-4">
+                <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="h-4 w-1/2 bg-muted rounded animate-pulse mb-2"></div>
+                <div className="flex gap-1 mt-2">
+                  <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                  <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -316,7 +337,12 @@ export default function GalleryGrid({
   return (
     <>
       {filteredAndSortedImages.length === 0 ? (
-        <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-card rounded-xl shadow-sm border border-border p-12 text-center"
+        >
           <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <Eye className="h-8 w-8 text-muted-foreground" />
           </div>
@@ -330,160 +356,182 @@ export default function GalleryGrid({
               ? "No photos match your search. Try a different search term."
               : "You haven't uploaded any photos yet. Upload some photos to see them here."}
           </p>
-        </div>
+        </motion.div>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {visibleImages.map((image) => (
-              <div
-                key={
-                  image.id || `image-${image.filename}-${image.lastModified}`
-                }
-                className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
-              >
-                {/* Update the image container in the gallery grid to use rounded corners for a more cohesive look */}
-                <div className="relative aspect-square group overflow-hidden transition-all duration-200 rounded-xl group-hover:scale-[1.02] group-hover:shadow-md group-hover:border-primary/50">
-                  {/* Image container with fallback */}
-                  <div
-                    className="absolute inset-0 bg-muted flex items-center justify-center cursor-pointer rounded-xl"
-                    onClick={() => onSelectImage(image)}
-                  >
-                    {!imageErrors[image.id] ? (
-                      <>
-                        {/* Show skeleton loader while image is loading */}
-                        {(imageLoading[image.id] === undefined ||
-                          imageLoading[image.id]) && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse rounded-xl">
-                            <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
-                          </div>
-                        )}
-                        <img
-                          src={image.url || getPlaceholderUrl(image)}
-                          alt={image.filename}
-                          className={`w-full h-full object-cover transition-opacity duration-300 ${
-                            imageLoading[image.id] ? "opacity-0" : "opacity-100"
-                          }`}
-                          loading="lazy"
-                          onLoad={() => handleImageLoadComplete(image.id)}
-                          onLoadStart={() => handleImageLoadStart(image.id)}
-                          onError={() => handleImageError(image.id, image)}
-                          crossOrigin="anonymous"
-                        />
-                      </>
-                    ) : (
-                      <div className="text-center p-4">
-                        <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          {image.filename || "Image unavailable"}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Access denied or image expired
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    <button
+            <AnimatePresence>
+              {visibleImages.map((image, index) => (
+                <motion.div
+                  key={
+                    image.id || `image-${image.filename}-${image.lastModified}`
+                  }
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3, delay: index * 0.03 }}
+                  whileHover={{
+                    y: -5,
+                    transition: { duration: 0.2 },
+                  }}
+                  className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-lg card-transition"
+                >
+                  <div className="relative aspect-square group overflow-hidden transition-all duration-200 rounded-t-xl hover-transition">
+                    {/* Image container with fallback */}
+                    <div
+                      className="absolute inset-0 bg-muted flex items-center justify-center cursor-pointer"
                       onClick={() => onSelectImage(image)}
-                      className="bg-white/80 dark:bg-card/80 rounded-full p-2 shadow-lg hover:bg-white dark:hover:bg-card transition-colors"
                     >
-                      <Eye className="h-5 w-5 text-foreground" />
-                    </button>
-                  </div>
-                  <div className="absolute top-2 left-2">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusClass(
-                        image
-                      )}`}
-                    >
-                      {getStatusIcon(image)}
-                      <span className="ml-1">{getStatusText(image)}</span>
-                    </span>
-                  </div>
-                  {image.location &&
-                    !image.location.includes(getStatusText(image)) && (
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/60 text-white border border-white/20">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          <span className="truncate">{image.location}</span>
-                        </span>
-                      </div>
-                    )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between">
-                    <h3
-                      className="font-medium text-foreground truncate"
-                      title={image.filename}
-                    >
-                      {image.filename || `Image ${image.id?.substring(0, 8)}`}
-                    </h3>
-                    <div className="relative">
-                      <button
-                        onClick={(e) => toggleDropdown(image.id, e)}
-                        className="p-1 rounded-full hover:bg-muted text-muted-foreground"
-                      >
-                        <MoreHorizontal className="h-5 w-5" />
-                      </button>
-                      {showDropdownId === image.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
-                          <div className="py-1">
-                            <button
-                              onClick={() => onSelectImage(image)}
-                              className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </button>
-                            <a
-                              href={image.url}
-                              download={image.filename}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </a>
-                          </div>
+                      {!imageErrors[image.id] ? (
+                        <>
+                          {/* Show skeleton loader while image is loading */}
+                          {(imageLoading[image.id] === undefined ||
+                            imageLoading[image.id]) && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+                              <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                            </div>
+                          )}
+                          <img
+                            src={image.url || getPlaceholderUrl(image)}
+                            alt={image.filename}
+                            className={`w-full h-full object-cover img-loading-transition ${
+                              imageLoading[image.id]
+                                ? "opacity-0"
+                                : "opacity-100"
+                            }`}
+                            loading="lazy"
+                            onLoad={() => handleImageLoadComplete(image.id)}
+                            onLoadStart={() => handleImageLoadStart(image.id)}
+                            onError={() => handleImageError(image.id, image)}
+                            crossOrigin="anonymous"
+                          />
+                        </>
+                      ) : (
+                        <div className="text-center p-4">
+                          <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            {image.filename || "Image unavailable"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Access denied or image expired
+                          </p>
                         </div>
                       )}
                     </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {image.lastModified
-                      ? formatDate(image.lastModified)
-                      : "Unknown date"}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {image.labels && image.labels.length > 0 ? (
-                      <>
-                        {image.labels.slice(0, 3).map((label, index) => (
-                          <span
-                            key={`${image.id}-label-${index}`}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                        {image.labels.length > 3 && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            +{image.labels.length - 3}
-                          </span>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {image.size
-                          ? formatFileSize(image.size)
-                          : "Unknown size"}
+
+                    {/* Overlay with gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                    {/* View button */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-10">
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onSelectImage(image)}
+                        className="bg-white/90 dark:bg-card/90 rounded-full p-3 shadow-lg hover:bg-white dark:hover:bg-card transition-colors"
+                      >
+                        <Eye className="h-5 w-5 text-foreground" />
+                      </motion.button>
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusClass(
+                          image
+                        )}`}
+                      >
+                        {getStatusIcon(image)}
+                        <span className="ml-1">{getStatusText(image)}</span>
                       </span>
-                    )}
+                    </div>
+
+                    {/* Location badge */}
+                    {image.location &&
+                      !image.location.includes(getStatusText(image)) && (
+                        <div className="absolute bottom-2 left-2 right-2 z-10">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/70 text-white border border-white/20">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            <span className="truncate">{image.location}</span>
+                          </span>
+                        </div>
+                      )}
                   </div>
-                </div>
-              </div>
-            ))}
+
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <h3
+                        className="font-medium text-foreground truncate"
+                        title={image.filename}
+                      >
+                        {image.filename || `Image ${image.id?.substring(0, 8)}`}
+                      </h3>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => toggleDropdown(image.id, e)}
+                          className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+                        >
+                          <MoreHorizontal className="h-5 w-5" />
+                        </button>
+                        {showDropdownId === image.id && (
+                          <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
+                            <div className="py-1">
+                              <button
+                                onClick={() => onSelectImage(image)}
+                                className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </button>
+                              <a
+                                href={image.url}
+                                download={image.filename}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {image.lastModified
+                        ? formatDate(image.lastModified)
+                        : "Unknown date"}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {image.labels && image.labels.length > 0 ? (
+                        <>
+                          {image.labels.slice(0, 3).map((label, index) => (
+                            <span
+                              key={`${image.id}-label-${index}`}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                          {image.labels.length > 3 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                              +{image.labels.length - 3}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {image.size
+                            ? formatFileSize(image.size)
+                            : "Unknown size"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
           {/* Load more trigger */}

@@ -136,16 +136,20 @@ export default function ModerationOverview() {
 
   // Add these functions to handle image loading states
   const handleImageLoadStart = (imageId: string) => {
-    setImageLoading((prev) => ({ ...prev, [imageId]: true }));
+    if (!imageLoading[imageId]) {
+      setImageLoading((prev) => ({ ...prev, [imageId]: true }));
+    }
   };
 
   const handleImageLoadComplete = (imageId: string) => {
-    setImageLoading((prev) => ({ ...prev, [imageId]: false }));
+    if (imageLoading[imageId]) {
+      setImageLoading((prev) => ({ ...prev, [imageId]: false }));
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto animate-fade-in">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-foreground">
             Photo Analysis Dashboard
@@ -154,10 +158,58 @@ export default function ModerationOverview() {
             Smart photo organization powered by AWS Rekognition
           </p>
         </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="flex flex-col items-center">
-            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-muted-foreground">Loading dashboard data...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={`skeleton-stat-${i}`}
+              className="bg-card rounded-xl shadow-sm border border-border p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+                <div className="p-2 bg-muted rounded-lg w-9 h-9"></div>
+              </div>
+              <div className="h-8 w-16 bg-muted rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-32 bg-muted rounded animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+            </div>
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={`skeleton-category-${i}`}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-md bg-muted mr-3"></div>
+                    <div className="h-4 w-24 bg-muted rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-card rounded-xl shadow-sm border border-border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="h-6 w-48 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+            </div>
+            <div className="overflow-hidden">
+              <div className="h-8 w-full bg-muted rounded animate-pulse mb-4"></div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={`skeleton-row-${i}`}
+                  className="h-16 w-full bg-muted rounded animate-pulse mb-2"
+                ></div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -203,7 +255,7 @@ export default function ModerationOverview() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 contain-layout">
         <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-muted-foreground text-sm font-medium">
@@ -274,7 +326,7 @@ export default function ModerationOverview() {
       </div>
 
       {/* Top Categories */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 contain-layout">
         <div className="lg:col-span-1 bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-foreground">
@@ -376,11 +428,12 @@ export default function ModerationOverview() {
                                 <img
                                   src={item.imageUrl || "/placeholder.svg"}
                                   alt={item.filename}
-                                  className={`h-full w-full object-cover transition-opacity duration-300 ${
+                                  className={`h-full w-full object-cover will-change-opacity transition-opacity duration-300 ${
                                     imageLoading[item.id]
                                       ? "opacity-0"
                                       : "opacity-100"
                                   }`}
+                                  loading="lazy"
                                   onLoad={() =>
                                     handleImageLoadComplete(item.id)
                                   }

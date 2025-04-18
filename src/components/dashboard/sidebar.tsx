@@ -6,7 +6,6 @@ import {
   Settings,
   Moon,
   Sun,
-  FolderHeart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -75,19 +74,6 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
               >
                 <ImageIcon className="mr-3 h-5 w-5" />
                 Gallery
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/collections"
-                className={`flex w-full items-center px-3 py-2.5 rounded-lg font-medium transition-all ${
-                  isActive("/collections") || isActive("/collection/")
-                    ? "text-primary bg-primary/10"
-                    : "text-foreground hover:bg-muted"
-                }`}
-              >
-                <FolderHeart className="mr-3 h-5 w-5" />
-                Collections
               </Link>
             </li>
             <li>

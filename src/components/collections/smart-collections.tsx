@@ -190,12 +190,22 @@ export default function SmartCollections() {
 
   if (isLoading || isGenerating) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-muted-foreground">
-            Generating smart collections...
-          </p>
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
+          <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={`skeleton-collection-${i}`}
+              className="flex flex-col items-center"
+            >
+              <div className="w-40 h-40 rounded-full bg-muted skeleton-loading mb-3"></div>
+              <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -253,8 +263,8 @@ export default function SmartCollections() {
             className="flex flex-col items-center group"
           >
             <div className="relative mb-3">
-              {/* Circular image container */}
-              <div className="w-40 h-40 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary transition-all duration-200 shadow-md group-hover:shadow-lg">
+              {/* Circular image container with optimized transitions */}
+              <div className="w-40 h-40 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary hover-transition shadow-md group-hover:shadow-lg">
                 {collection.coverImage ? (
                   <>
                     {/* Show skeleton loader while image is loading */}
@@ -267,7 +277,7 @@ export default function SmartCollections() {
                     <img
                       src={collection.coverImage || "/placeholder.svg"}
                       alt={collection.name}
-                      className={`w-full h-full object-cover transition-all duration-300 ${
+                      className={`w-full h-full object-cover img-loading-transition ${
                         imageLoading[collection.id]
                           ? "opacity-0"
                           : "opacity-100"
@@ -297,10 +307,10 @@ export default function SmartCollections() {
                 </div>
               </div>
 
-              {/* Collection type badge */}
+              {/* Collection type badge - position adjusted for circular container */}
               <div
                 className={`
-                absolute bottom-0 left-0 rounded-full px-3 py-1 text-white font-medium text-sm flex items-center
+                absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-white font-medium text-sm flex items-center
                 ${collection.type === "people" ? "bg-indigo-500" : ""}
                 ${collection.type === "location" ? "bg-green-500" : ""}
                 ${collection.type === "object" ? "bg-purple-500" : ""}

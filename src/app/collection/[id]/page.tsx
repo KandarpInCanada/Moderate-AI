@@ -164,7 +164,7 @@ export default function CollectionPage() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar activeView="collections" onNavigate={() => {}} />
+      <Sidebar activeView="gallery" onNavigate={() => {}} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-auto p-6 bg-background">
           <div className="max-w-7xl mx-auto">
