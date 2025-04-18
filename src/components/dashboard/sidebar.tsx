@@ -13,6 +13,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useAuth } from "@/context/auth-context";
 import UserProfile from "./user-profile";
 import LoginButton from "./login-button";
+import NotificationBell from "@/components/notifications/notification-bell";
 
 interface SidebarProps {
   activeView: string;
@@ -116,6 +117,7 @@ export default function Sidebar({ activeView, onNavigate }: SidebarProps) {
               <Moon className="h-5 w-5" />
             )}
           </button>
+          <NotificationBell />
           <span className="text-sm text-muted-foreground">
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </span>

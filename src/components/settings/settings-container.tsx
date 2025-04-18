@@ -6,7 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import SettingsGeneral from "./settings-general";
 import SettingsAppearance from "./settings-appearance";
-import NotificationSettings from "../notifications/notification-settings";
+import NotificationSettings from "./notification-settings";
 
 type SettingsTab = "general" | "appearance" | "notifications";
 
