@@ -12,8 +12,6 @@ export async function GET() {
       version: process.env.NEXT_PUBLIC_APP_VERSION || "1.0.0",
       environment: process.env.NODE_ENV,
     }
-
-    // Check Supabase connection
     let databaseStatus = "unknown"
     try {
       // Use a more reliable way to check Supabase connection
