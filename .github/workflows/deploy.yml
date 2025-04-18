@@ -95,6 +95,7 @@ jobs:
             NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
             NEXT_AWS_REGION=${{ secrets.NEXT_AWS_REGION }}
             NEXT_AWS_BUCKET_NAME=${{ secrets.NEXT_AWS_BUCKET_NAME }}
+            NEXT_AWS_ACCOUNT_ID=${{ secrets.NEXT_AWS_ACCOUNT_ID }}
       
       - name: Set image output
         id: set-image
@@ -150,6 +151,7 @@ jobs:
                   {"name": "NEXT_AWS_SECRET_ACCESS_KEY", "value": "${{ secrets.NEXT_AWS_SECRET_ACCESS_KEY }}"},
                   {"name": "NEXT_AWS_REGION", "value": "${{ secrets.NEXT_AWS_REGION }}"},
                   {"name": "NEXT_AWS_BUCKET_NAME", "value": "${{ secrets.NEXT_AWS_BUCKET_NAME }}"},
+                  {"name": "NEXT_AWS_ACCOUNT_ID", "value": "${{ secrets.NEXT_AWS_ACCOUNT_ID }}"},
                   {"name": "NEXT_SUPABASE_SERVICE_ROLE_KEY", "value": "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"}
                 ] 
               else 
@@ -160,6 +162,7 @@ jobs:
                   {"name": "NEXT_AWS_SECRET_ACCESS_KEY", "value": "${{ secrets.NEXT_AWS_SECRET_ACCESS_KEY }}"},
                   {"name": "NEXT_AWS_REGION", "value": "${{ secrets.NEXT_AWS_REGION }}"},
                   {"name": "NEXT_AWS_BUCKET_NAME", "value": "${{ secrets.NEXT_AWS_BUCKET_NAME }}"},
+                  {"name": "NEXT_AWS_ACCOUNT_ID", "value": "${{ secrets.NEXT_AWS_ACCOUNT_ID }}"},
                   {"name": "NEXT_SUPABASE_SERVICE_ROLE_KEY", "value": "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"}
                 ]}
               end' task-definition.json > updated-task-definition.json
