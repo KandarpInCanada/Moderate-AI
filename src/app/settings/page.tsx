@@ -1,14 +1,17 @@
-import SettingsContainer from "@/components/settings/settings-container";
+"use client";
 
-export const metadata = {
-  title: "Settings - PhotoSense",
-  description: "Manage your PhotoSense account settings",
-};
+import SettingsContainer from "@/components/settings/settings-container";
+import Sidebar from "@/components/dashboard/sidebar";
 
 export default function SettingsPage() {
   return (
     <div className="flex h-screen bg-background">
-      <SettingsContainer />
+      <Sidebar activeView="settings" onNavigate={() => {}} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto p-6 bg-background">
+          <SettingsContainer />
+        </main>
+      </div>
     </div>
   );
 }

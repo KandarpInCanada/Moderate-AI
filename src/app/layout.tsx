@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/context/auth-context";
 import { NotificationsProvider } from "@/context/notifications-context";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,18 @@ export default function RootLayout({
       >
         <ThemeProvider defaultTheme="system" storageKey="moderateai-theme">
           <AuthProvider>
-            <NotificationsProvider>{children}</NotificationsProvider>
+            <NotificationsProvider>
+              <Suspense
+                fallback={
+                  <div className="flex h-screen items-center justify-center">
+                    Loading...
+                  </div>
+                }
+              >
+                {/* Sidebar will be included in each page component as needed */}
+                {children}
+              </Suspense>
+            </NotificationsProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

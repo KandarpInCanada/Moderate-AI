@@ -1,72 +1,74 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ImageIcon, Tag, Users, Search, Calendar } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ImageIcon, Tag, Users, Search } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import type { ImageMetadata } from "@/types/image";
+import useSWR from "swr";
+
+// Add SWR fetcher function
+const fetcher = async (url: string, token: string) => {
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error("Failed to fetch data");
+  return res.json();
+};
+
+const formatTimeAgo = (dateString: string | Date) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.round(diffMs / 60000);
+  const diffHours = Math.round(diffMins / 60);
+  const diffDays = Math.round(diffHours / 24);
+
+  if (diffMins < 60) return `${diffMins} minutes ago`;
+  if (diffHours < 24) return `${diffHours} hours ago`;
+  if (diffDays < 7) return `${diffDays} days ago`;
+
+  return date.toLocaleDateString();
+};
 
 export default function ModerationOverview() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [photoStats, setPhotoStats] = useState({
-    totalImages: 0,
-    peopleDetected: 0,
-    objectsLabeled: 0,
-    textDetected: 0,
-    lastUpload: "N/A",
-  });
-  const [topCategories, setTopCategories] = useState<
-    { name: string; count: number }[]
-  >([]);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
-
   const { user, session } = useAuth();
+  const token = session?.access_token;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user || !session?.access_token) return;
+  // Use SWR for data fetching with caching and revalidation
+  const { data, error, isLoading } = useSWR(
+    token ? ["/api/images", token] : null,
+    ([url, token]) => fetcher(url, token),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // 1 minute
+    }
+  );
 
-      setLoading(true);
-      setError(null);
+  // Memoize statistics calculations to avoid recalculating on every render
+  const { photoStats, topCategories, recentActivity } = useMemo(() => {
+    if (!data?.images || data.images.length === 0) {
+      return {
+        photoStats: {
+          totalImages: 0,
+          peopleDetected: 0,
+          objectsLabeled: 0,
+          textDetected: 0,
+          lastUpload: "N/A",
+        },
+        topCategories: [],
+        recentActivity: [],
+      };
+    }
 
-      try {
-        const response = await fetch("/api/images", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch images: ${response.status} ${response.statusText}`
-          );
-        }
-
-        const data = await response.json();
-        const images: ImageMetadata[] = data.images || [];
-
-        // Process statistics
-        processImageStats(images);
-      } catch (err: any) {
-        console.error("Error fetching dashboard data:", err);
-        setError(err.message || "Failed to load dashboard data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user, session]);
-
-  const processImageStats = (images: ImageMetadata[]) => {
-    if (!images.length) return;
+    const images = data.images;
 
     // Calculate basic stats
     const totalImages = images.length;
-
-    // Count people (faces)
     const peopleDetected = images.reduce(
-      (sum, img) => sum + (img.faces || 0),
+      (sum: number, img: ImageMetadata) => sum + (img.faces || 0),
       0
     );
 
@@ -76,12 +78,12 @@ export default function ModerationOverview() {
 
     // Count text detected images
     const textDetected = images.filter(
-      (img) =>
+      (img: ImageMetadata) =>
         img.rekognitionDetails?.text && img.rekognitionDetails.text.length > 0
     ).length;
 
     // Process all labels and count occurrences
-    images.forEach((img) => {
+    images.forEach((img: ImageMetadata) => {
       if (img.labels && img.labels.length) {
         img.labels.forEach((label) => {
           allLabels.push(label);
@@ -111,40 +113,37 @@ export default function ModerationOverview() {
         labels: img.labels || [],
         faces: img.faces || 0,
         confidence: img.rekognitionDetails?.labels?.[0]?.confidence || 95,
+        imageUrl: img.url,
       }));
 
     // Find last upload time
     const lastUpload = recent.length > 0 ? recent[0].timestamp : "N/A";
 
-    // Update state
-    setPhotoStats({
-      totalImages,
-      peopleDetected,
-      objectsLabeled: allLabels.length,
-      textDetected,
-      lastUpload,
-    });
+    return {
+      photoStats: {
+        totalImages,
+        peopleDetected,
+        objectsLabeled: allLabels.length,
+        textDetected,
+        lastUpload,
+      },
+      topCategories: topCats,
+      recentActivity: recent,
+    };
+  }, [data?.images]);
 
-    setTopCategories(topCats);
-    setRecentActivity(recent);
+  const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({});
+
+  // Add these functions to handle image loading states
+  const handleImageLoadStart = (imageId: string) => {
+    setImageLoading((prev) => ({ ...prev, [imageId]: true }));
   };
 
-  const formatTimeAgo = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.round(diffMs / 60000);
-    const diffHours = Math.round(diffMins / 60);
-    const diffDays = Math.round(diffHours / 24);
-
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    return date.toLocaleDateString();
+  const handleImageLoadComplete = (imageId: string) => {
+    setImageLoading((prev) => ({ ...prev, [imageId]: false }));
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
@@ -180,7 +179,7 @@ export default function ModerationOverview() {
           <h3 className="text-lg font-medium text-red-800 dark:text-red-400 mb-2">
             Error Loading Dashboard
           </h3>
-          <p className="text-red-700 dark:text-red-500">{error}</p>
+          <p className="text-red-700 dark:text-red-500">{error.message}</p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60"
@@ -287,7 +286,7 @@ export default function ModerationOverview() {
           </div>
 
           {topCategories.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {topCategories.map((category) => (
                 <div
                   key={category.name}
@@ -335,15 +334,23 @@ export default function ModerationOverview() {
           </div>
 
           {recentActivity.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+              <table className="w-full table-fixed">
+                <thead className="sticky top-0 bg-card z-10">
                   <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <th className="px-4 py-3 border-b border-border">Photo</th>
-                    <th className="px-4 py-3 border-b border-border">Time</th>
-                    <th className="px-4 py-3 border-b border-border">Labels</th>
-                    <th className="px-4 py-3 border-b border-border">Faces</th>
-                    <th className="px-4 py-3 border-b border-border">
+                    <th className="px-4 py-3 border-b border-border w-[40%]">
+                      Photo
+                    </th>
+                    <th className="px-4 py-3 border-b border-border w-[15%]">
+                      Time
+                    </th>
+                    <th className="px-4 py-3 border-b border-border w-[20%]">
+                      Labels
+                    </th>
+                    <th className="px-4 py-3 border-b border-border w-[10%]">
+                      Faces
+                    </th>
+                    <th className="px-4 py-3 border-b border-border w-[15%]">
                       Confidence
                     </th>
                   </tr>
@@ -354,19 +361,56 @@ export default function ModerationOverview() {
                       key={item.id || `activity-${item.filename}`}
                       className="hover:bg-muted/50"
                     >
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center overflow-hidden relative">
+                            {item.imageUrl ? (
+                              <>
+                                {/* Show skeleton loader while image is loading */}
+                                {(imageLoading[item.id] === undefined ||
+                                  imageLoading[item.id]) && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+                                    <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+                                  </div>
+                                )}
+                                <img
+                                  src={item.imageUrl || "/placeholder.svg"}
+                                  alt={item.filename}
+                                  className={`h-full w-full object-cover transition-opacity duration-300 ${
+                                    imageLoading[item.id]
+                                      ? "opacity-0"
+                                      : "opacity-100"
+                                  }`}
+                                  onLoad={() =>
+                                    handleImageLoadComplete(item.id)
+                                  }
+                                  onLoadStart={() =>
+                                    handleImageLoadStart(item.id)
+                                  }
+                                  onError={() => {
+                                    console.error(
+                                      `Failed to load thumbnail for ${item.id}`
+                                    );
+                                    handleImageLoadComplete(item.id);
+                                  }}
+                                  crossOrigin="anonymous"
+                                />
+                              </>
+                            ) : (
+                              <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                            )}
                           </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-foreground">
+                          <div className="ml-3 max-w-[calc(100%-3rem)]">
+                            <p
+                              className="text-sm font-medium text-foreground truncate"
+                              title={item.filename}
+                            >
                               {item.filename}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <p className="text-sm text-muted-foreground">
                           {item.timestamp}
                         </p>
@@ -374,7 +418,7 @@ export default function ModerationOverview() {
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap gap-1">
                           {item.labels
-                            .slice(0, 3)
+                            .slice(0, 2)
                             .map((label: string, index: number) => (
                               <span
                                 key={`${item.id}-label-${index}`}
@@ -383,24 +427,24 @@ export default function ModerationOverview() {
                                 {label}
                               </span>
                             ))}
-                          {item.labels.length > 3 && (
+                          {item.labels.length > 2 && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                              +{item.labels.length - 3}
+                              +{item.labels.length - 2}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                      <td className="px-4 py-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
                           <Users className="mr-1 h-3 w-3" />
                           {item.faces}
                         </span>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-4">
                         <div className="flex items-center">
-                          <div className="w-16 bg-muted rounded-full h-2.5">
+                          <div className="w-12 bg-muted rounded-full h-2">
                             <div
-                              className="h-2.5 rounded-full bg-green-500"
+                              className="h-2 rounded-full bg-green-500"
                               style={{ width: `${item.confidence}%` }}
                             ></div>
                           </div>
@@ -423,36 +467,6 @@ export default function ModerationOverview() {
               </p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Calendar View Teaser */}
-      <div className="bg-card rounded-xl shadow-sm border border-border p-6 hover:shadow-md transition-all">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">
-              Photo Timeline
-            </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              View your photos organized by date
-            </p>
-          </div>
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
-            Open Timeline
-          </button>
-        </div>
-
-        <div className="flex items-center justify-center p-8 border border-dashed border-border rounded-lg bg-muted/50">
-          <div className="text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h4 className="text-foreground font-medium mb-2">
-              Chronological Photo View
-            </h4>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Browse your photos organized by year, month, and day. AWS
-              Rekognition automatically detects dates from your images.
-            </p>
-          </div>
         </div>
       </div>
     </div>

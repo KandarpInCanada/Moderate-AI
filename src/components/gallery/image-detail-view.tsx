@@ -10,6 +10,7 @@ import {
   Text,
   Clock,
   Info,
+  ImageIcon,
 } from "lucide-react";
 import type { ImageMetadata } from "@/types/image";
 import { useState, useEffect } from "react";
@@ -28,6 +29,7 @@ export default function ImageDetailView({
     "info"
   );
   const [imageError, setImageError] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
   useEffect(() => {
     // Reset image error state when image changes
@@ -105,36 +107,54 @@ export default function ImageDetailView({
         <div className="flex flex-col lg:flex-row">
           {/* Image section - fixed size container */}
           <div className="lg:w-3/5 bg-muted flex items-center justify-center p-0 h-[500px] overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center relative">
               {!imageError ? (
-                <img
-                  src={image.url || getPlaceholderUrl()}
-                  alt={image.filename}
-                  className="max-w-full max-h-full object-contain"
-                  onError={async (e) => {
-                    // Try to refresh the URL if it's a 403 error (likely expired pre-signed URL)
-                    if (image.key && image.url) {
-                      try {
-                        // Only attempt to refresh if we have the necessary data
-                        const refreshedUrl = await refreshImageUrl(image.key);
-                        // Update the image in place with the new URL
-                        image.url = refreshedUrl;
-                        // Retry loading with the new URL
-                        e.currentTarget.src = refreshedUrl;
-                        return;
-                      } catch (refreshError) {
-                        console.error(
-                          "Failed to refresh image URL:",
-                          refreshError
-                        );
+                <>
+                  {/* Loading skeleton */}
+                  {isImageLoading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+                      <div className="flex flex-col items-center">
+                        <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Loading image...
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <img
+                    src={image.url || getPlaceholderUrl()}
+                    alt={image.filename}
+                    className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
+                      isImageLoading ? "opacity-0" : "opacity-100"
+                    }`}
+                    onLoad={() => setIsImageLoading(false)}
+                    onLoadStart={() => setIsImageLoading(true)}
+                    onError={async (e) => {
+                      // Try to refresh the URL if it's a 403 error (likely expired pre-signed URL)
+                      if (image.key && image.url) {
+                        try {
+                          // Only attempt to refresh if we have the necessary data
+                          const refreshedUrl = await refreshImageUrl(image.key);
+                          // Update the image in place with the new URL
+                          image.url = refreshedUrl;
+                          // Retry loading with the new URL
+                          e.currentTarget.src = refreshedUrl;
+                          return;
+                        } catch (refreshError) {
+                          console.error(
+                            "Failed to refresh image URL:",
+                            refreshError
+                          );
+                        }
                       }
-                    }
 
-                    // If refresh fails or isn't possible, mark as error
-                    setImageError(true);
-                  }}
-                  crossOrigin="anonymous"
-                />
+                      // If refresh fails or isn't possible, mark as error
+                      setImageError(true);
+                      setIsImageLoading(false);
+                    }}
+                    crossOrigin="anonymous"
+                  />
+                </>
               ) : (
                 <div className="text-center p-6">
                   <div className="h-16 w-16 bg-muted-foreground/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -150,11 +170,13 @@ export default function ImageDetailView({
                     onClick={async () => {
                       if (image.key) {
                         try {
+                          setIsImageLoading(true);
                           const refreshedUrl = await refreshImageUrl(image.key);
                           image.url = refreshedUrl;
                           setImageError(false);
                         } catch (error) {
                           console.error("Failed to refresh image:", error);
+                          setIsImageLoading(false);
                         }
                       }
                     }}

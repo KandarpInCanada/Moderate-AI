@@ -1,10 +1,17 @@
-import Dashboard from "@/components/dashboard/dashboard";
+"use client";
 
-export const metadata = {
-  title: "Dashboard - PhotoSense",
-  description: "AI-powered photo organization dashboard",
-};
+import Dashboard from "@/components/dashboard/dashboard";
+import Sidebar from "@/components/dashboard/sidebar";
 
 export default function Home() {
-  return <Dashboard />;
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar activeView="dashboard" onNavigate={() => {}} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto p-6 bg-background">
+          <Dashboard />
+        </main>
+      </div>
+    </div>
+  );
 }

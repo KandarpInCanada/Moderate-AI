@@ -7,7 +7,7 @@ export default function NotificationToggle() {
   const { enabled, setEnabled } = useNotifications();
 
   return (
-    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border">
       <div className="flex items-center">
         {enabled ? (
           <Bell className="h-5 w-5 text-primary mr-3" />
@@ -26,7 +26,7 @@ export default function NotificationToggle() {
         </div>
       </div>
 
-      {/* Tailwind toggle switch */}
+      {/* Improved toggle switch with better light mode styling */}
       <button
         type="button"
         role="switch"
@@ -35,7 +35,7 @@ export default function NotificationToggle() {
         onClick={() => setEnabled(!enabled)}
         className={`
           relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 
-          transition-colors duration-200 ease-in-out focus:outline-none
+          transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
           ${
             enabled
               ? "bg-primary border-primary"

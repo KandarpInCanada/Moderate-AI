@@ -1,8 +1,7 @@
 "use client";
 
 import type React from "react";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Tag,
   Users,
@@ -16,6 +15,7 @@ import {
 import type { ModerationStatus } from "./gallery-container";
 import type { ImageMetadata } from "@/types/image";
 import { refreshImageUrl } from "@/lib/s3-client";
+import { useInView } from "react-intersection-observer";
 
 interface GalleryGridProps {
   activeFilter: ModerationStatus;
@@ -39,11 +39,29 @@ export default function GalleryGrid({
   const [showDropdownId, setShowDropdownId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [visibleCount, setVisibleCount] = useState(20); // Start with 20 images
+  // Add an imageLoading state to track loading status for each image
+  const [imageLoading, setImageLoading] = useState<Record<string, boolean>>({});
+
+  // Use intersection observer for infinite scrolling
+  const { ref, inView } = useInView({
+    threshold: 0,
+    triggerOnce: false,
+  });
 
   // Use useEffect to indicate when component is mounted on client
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Load more images when scrolling to the bottom
+  useEffect(() => {
+    if (inView && filteredAndSortedImages.length > visibleCount) {
+      setVisibleCount((prev) =>
+        Math.min(prev + 12, filteredAndSortedImages.length)
+      );
+    }
+  }, [inView]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,68 +75,81 @@ export default function GalleryGrid({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showDropdownId]);
 
-  // Only filter and sort images on the client side
-  const filteredImages = isClient
-    ? images.filter((image) => {
-        // Filter based on the selected category
-        let matchesFilter = true;
-        if (activeFilter === "approved") {
-          // "approved" is now "People" filter
-          matchesFilter = image.faces > 0;
-        } else if (activeFilter === "flagged") {
-          // "flagged" is now "Objects" filter
-          matchesFilter = image.labels.some(
+  // Memoize filtered and sorted images to avoid recalculating on every render
+  const filteredAndSortedImages = useMemo(() => {
+    if (!isClient || !images.length) return [];
+
+    // Filter images
+    const filtered = images.filter((image) => {
+      // Filter based on the selected category
+      let matchesFilter = true;
+      if (activeFilter === "approved") {
+        // "approved" is now "People" filter
+        matchesFilter = image.faces > 0;
+      } else if (activeFilter === "flagged") {
+        // "flagged" is now "Objects" filter
+        matchesFilter =
+          image.labels &&
+          image.labels.length > 0 &&
+          image.labels.some(
             (label) => !["People", "Person", "Human", "Face"].includes(label)
           );
-        } else if (activeFilter === "pending") {
-          // "pending" is now "Places" filter
-          matchesFilter = image.location !== "";
-        } else if (activeFilter === "text") {
-          // "text" is for images with detected text
-          matchesFilter =
-            image.rekognitionDetails?.text &&
-            image.rekognitionDetails.text.length > 0;
-        }
+      } else if (activeFilter === "pending") {
+        // "pending" is now "Places" filter
+        matchesFilter = !!image.location && image.location !== "";
+      } else if (activeFilter === "text") {
+        // "text" is for images with detected text
+        matchesFilter =
+          image.rekognitionDetails?.text &&
+          image.rekognitionDetails.text.length > 0;
+      }
 
-        // Filter by active label if selected and the prop is provided
-        if (activeLabel) {
-          matchesFilter = matchesFilter && image.labels.includes(activeLabel);
-        }
+      // Filter by active label if selected and the prop is provided
+      if (activeLabel) {
+        matchesFilter =
+          matchesFilter && image.labels && image.labels.includes(activeLabel);
+      }
 
-        // Search in filename, labels, and location
-        const matchesSearch =
-          image.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      // Search in filename, labels, and location
+      const matchesSearch =
+        searchQuery === "" ||
+        image.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (image.labels &&
           image.labels.some((label) =>
             label.toLowerCase().includes(searchQuery.toLowerCase())
-          ) ||
-          (image.location &&
-            image.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (image.rekognitionDetails.text &&
-            image.rekognitionDetails.text.some((text) =>
-              text.toLowerCase().includes(searchQuery.toLowerCase())
-            ));
+          )) ||
+        (image.location &&
+          image.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (image.rekognitionDetails?.text &&
+          image.rekognitionDetails.text.some((text) =>
+            text.toLowerCase().includes(searchQuery.toLowerCase())
+          ));
 
-        return matchesFilter && matchesSearch;
-      })
-    : [];
+      return matchesFilter && matchesSearch;
+    });
 
-  const sortedImages = isClient
-    ? [...filteredImages].sort((a, b) => {
-        if (sortBy === "newest") {
-          return (
-            new Date(b.lastModified).getTime() -
-            new Date(a.lastModified).getTime()
-          );
-        } else if (sortBy === "oldest") {
-          return (
-            new Date(a.lastModified).getTime() -
-            new Date(b.lastModified).getTime()
-          );
-        } else {
-          return a.filename.localeCompare(b.filename);
-        }
-      })
-    : [];
+    // Sort filtered images
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "newest") {
+        return (
+          new Date(b.lastModified).getTime() -
+          new Date(a.lastModified).getTime()
+        );
+      } else if (sortBy === "oldest") {
+        return (
+          new Date(a.lastModified).getTime() -
+          new Date(b.lastModified).getTime()
+        );
+      } else {
+        return a.filename.localeCompare(b.filename);
+      }
+    });
+  }, [isClient, images, activeFilter, searchQuery, activeLabel, sortBy]);
+
+  // Get visible images based on current count
+  const visibleImages = useMemo(() => {
+    return filteredAndSortedImages.slice(0, visibleCount);
+  }, [filteredAndSortedImages, visibleCount]);
 
   const toggleDropdown = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -212,8 +243,33 @@ export default function GalleryGrid({
     );
   };
 
-  const handleImageError = (imageId: string) => {
+  // Add this function to handle image loading start
+  const handleImageLoadStart = (imageId: string) => {
+    setImageLoading((prev) => ({ ...prev, [imageId]: true }));
+  };
+
+  // Add this function to handle image loading completion
+  const handleImageLoadComplete = (imageId: string) => {
+    setImageLoading((prev) => ({ ...prev, [imageId]: false }));
+  };
+
+  const handleImageError = async (imageId: string, image: ImageMetadata) => {
     console.error(`Failed to load image: ${imageId}`);
+
+    // Try to refresh the URL if we have the key
+    if (image.key) {
+      try {
+        const refreshedUrl = await refreshImageUrl(image.key);
+        // Update the image URL
+        image.url = refreshedUrl;
+        // Force a re-render by updating the error state
+        setImageErrors((prev) => ({ ...prev, [imageId]: false }));
+        return;
+      } catch (error) {
+        console.error("Failed to refresh image URL:", error);
+      }
+    }
+
     setImageErrors((prev) => ({ ...prev, [imageId]: true }));
   };
 
@@ -259,7 +315,7 @@ export default function GalleryGrid({
 
   return (
     <>
-      {sortedImages.length === 0 ? (
+      {filteredAndSortedImages.length === 0 ? (
         <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
           <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
             <Eye className="h-8 w-8 text-muted-foreground" />
@@ -276,167 +332,167 @@ export default function GalleryGrid({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {sortedImages.map((image) => (
-            <div
-              key={image.id || `image-${image.filename}-${image.lastModified}`}
-              className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
-            >
-              <div className="relative aspect-square group">
-                {/* Image container with fallback */}
-                <div
-                  className="absolute inset-0 bg-muted flex items-center justify-center"
-                  onClick={() => onSelectImage(image)}
-                >
-                  {!imageErrors[image.id] ? (
-                    <img
-                      src={image.url || getPlaceholderUrl(image)}
-                      alt={image.filename}
-                      className="w-full h-full object-cover"
-                      onError={async (e) => {
-                        console.error(`Failed to load image: ${image.id}`);
-
-                        // Try to refresh the URL if it's a 403 error (likely expired pre-signed URL)
-                        if (image.key && image.url) {
-                          try {
-                            // Only attempt to refresh if we have the necessary data
-                            const refreshedUrl = await refreshImageUrl(
-                              image.key
-                            );
-                            // Update the image in place with the new URL
-                            image.url = refreshedUrl;
-                            // Retry loading with the new URL
-                            e.currentTarget.src = refreshedUrl;
-                            return;
-                          } catch (refreshError) {
-                            console.error(
-                              "Failed to refresh image URL:",
-                              refreshError
-                            );
-                          }
-                        }
-
-                        // If refresh fails or isn't possible, mark as error
-                        setImageErrors((prev) => ({
-                          ...prev,
-                          [image.id]: true,
-                        }));
-                      }}
-                      crossOrigin="anonymous"
-                    />
-                  ) : (
-                    <div className="text-center p-4">
-                      <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {image.filename || "Image unavailable"}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Access denied or image expired
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <button
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {visibleImages.map((image) => (
+              <div
+                key={
+                  image.id || `image-${image.filename}-${image.lastModified}`
+                }
+                className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
+              >
+                {/* Update the image container in the gallery grid to use rounded corners for a more cohesive look */}
+                <div className="relative aspect-square group overflow-hidden transition-all duration-200 rounded-xl group-hover:scale-[1.02] group-hover:shadow-md group-hover:border-primary/50">
+                  {/* Image container with fallback */}
+                  <div
+                    className="absolute inset-0 bg-muted flex items-center justify-center cursor-pointer rounded-xl"
                     onClick={() => onSelectImage(image)}
-                    className="bg-card rounded-full p-2 shadow-lg hover:bg-muted transition-colors"
                   >
-                    <Eye className="h-5 w-5 text-foreground" />
-                  </button>
-                </div>
-                <div className="absolute top-2 left-2">
-                  <span
-                    className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusClass(
-                      image
-                    )}`}
-                  >
-                    {getStatusIcon(image)}
-                    <span className="ml-1">{getStatusText(image)}</span>
-                  </span>
-                </div>
-                {image.location &&
-                  !image.location.includes(getStatusText(image)) && (
-                    <div className="absolute bottom-2 left-2 right-2">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/60 text-white border border-white/20">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        <span className="truncate">{image.location}</span>
-                      </span>
-                    </div>
-                  )}
-              </div>
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <h3
-                    className="font-medium text-foreground truncate"
-                    title={image.filename}
-                  >
-                    {image.filename || `Image ${image.id.substring(0, 8)}`}
-                  </h3>
-                  <div className="relative">
-                    <button
-                      onClick={(e) => toggleDropdown(image.id, e)}
-                      className="p-1 rounded-full hover:bg-muted text-muted-foreground"
-                    >
-                      <MoreHorizontal className="h-5 w-5" />
-                    </button>
-                    {showDropdownId === image.id && (
-                      <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
-                        <div className="py-1">
-                          <button
-                            onClick={() => onSelectImage(image)}
-                            className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </button>
-                          <a
-                            href={image.url}
-                            download={image.filename}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download
-                          </a>
-                        </div>
+                    {!imageErrors[image.id] ? (
+                      <>
+                        {/* Show skeleton loader while image is loading */}
+                        {(imageLoading[image.id] === undefined ||
+                          imageLoading[image.id]) && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse rounded-xl">
+                            <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                          </div>
+                        )}
+                        <img
+                          src={image.url || getPlaceholderUrl(image)}
+                          alt={image.filename}
+                          className={`w-full h-full object-cover transition-opacity duration-300 ${
+                            imageLoading[image.id] ? "opacity-0" : "opacity-100"
+                          }`}
+                          loading="lazy"
+                          onLoad={() => handleImageLoadComplete(image.id)}
+                          onLoadStart={() => handleImageLoadStart(image.id)}
+                          onError={() => handleImageError(image.id, image)}
+                          crossOrigin="anonymous"
+                        />
+                      </>
+                    ) : (
+                      <div className="text-center p-4">
+                        <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          {image.filename || "Image unavailable"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Access denied or image expired
+                        </p>
                       </div>
                     )}
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {image.lastModified
-                    ? formatDate(image.lastModified)
-                    : "Unknown date"}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {image.labels && image.labels.length > 0 ? (
-                    <>
-                      {image.labels.slice(0, 3).map((label, index) => (
-                        <span
-                          key={`${image.id}-label-${index}`}
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
-                        >
-                          {label}
-                        </span>
-                      ))}
-                      {image.labels.length > 3 && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                          +{image.labels.length - 3}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      {image.size ? formatFileSize(image.size) : "Unknown size"}
+
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    <button
+                      onClick={() => onSelectImage(image)}
+                      className="bg-white/80 dark:bg-card/80 rounded-full p-2 shadow-lg hover:bg-white dark:hover:bg-card transition-colors"
+                    >
+                      <Eye className="h-5 w-5 text-foreground" />
+                    </button>
+                  </div>
+                  <div className="absolute top-2 left-2">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusClass(
+                        image
+                      )}`}
+                    >
+                      {getStatusIcon(image)}
+                      <span className="ml-1">{getStatusText(image)}</span>
                     </span>
-                  )}
+                  </div>
+                  {image.location &&
+                    !image.location.includes(getStatusText(image)) && (
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/60 text-white border border-white/20">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          <span className="truncate">{image.location}</span>
+                        </span>
+                      </div>
+                    )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <h3
+                      className="font-medium text-foreground truncate"
+                      title={image.filename}
+                    >
+                      {image.filename || `Image ${image.id?.substring(0, 8)}`}
+                    </h3>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => toggleDropdown(image.id, e)}
+                        className="p-1 rounded-full hover:bg-muted text-muted-foreground"
+                      >
+                        <MoreHorizontal className="h-5 w-5" />
+                      </button>
+                      {showDropdownId === image.id && (
+                        <div className="absolute right-0 mt-1 w-48 bg-card rounded-md shadow-lg z-10 border border-border">
+                          <div className="py-1">
+                            <button
+                              onClick={() => onSelectImage(image)}
+                              className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Details
+                            </button>
+                            <a
+                              href={image.url}
+                              download={image.filename}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {image.lastModified
+                      ? formatDate(image.lastModified)
+                      : "Unknown date"}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {image.labels && image.labels.length > 0 ? (
+                      <>
+                        {image.labels.slice(0, 3).map((label, index) => (
+                          <span
+                            key={`${image.id}-label-${index}`}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
+                          >
+                            {label}
+                          </span>
+                        ))}
+                        {image.labels.length > 3 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                            +{image.labels.length - 3}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {image.size
+                          ? formatFileSize(image.size)
+                          : "Unknown size"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+
+          {/* Load more trigger */}
+          {visibleCount < filteredAndSortedImages.length && (
+            <div ref={ref} className="flex justify-center mt-8 pb-8">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </>
   );

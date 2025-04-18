@@ -99,7 +99,7 @@ export default function NotificationSettings() {
             </button>
           </div>
 
-          <div className="bg-muted/50 rounded-lg overflow-hidden">
+          <div className="bg-muted/50 rounded-lg overflow-hidden border border-border">
             {recentNotifications.length > 0 ? (
               <div className="divide-y divide-border">
                 {recentNotifications.map((notification) => (
@@ -145,7 +145,7 @@ export default function NotificationSettings() {
           <h4 className="text-sm font-medium text-muted-foreground mb-3">
             AWS SQS Integration
           </h4>
-          <div className="bg-muted/50 rounded-lg p-4">
+          <div className="bg-muted/50 rounded-lg p-4 border border-border">
             <div className="flex items-start justify-between">
               <div>
                 <h5 className="text-sm font-medium text-foreground">
@@ -156,11 +156,9 @@ export default function NotificationSettings() {
                   processed
                 </p>
                 {queueUrl && (
-                  <p className="text-xs text-foreground mt-2">
+                  <p className="text-xs font-mono mt-2 bg-background/80 p-2 rounded border border-border overflow-x-auto">
                     Queue URL:{" "}
-                    <span className="font-mono text-muted-foreground">
-                      {queueUrl}
-                    </span>
+                    <span className="text-muted-foreground">{queueUrl}</span>
                   </p>
                 )}
               </div>
@@ -224,11 +222,11 @@ export default function NotificationSettings() {
         </div>
 
         {/* Info about notifications */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2">
             About AWS SQS Notifications
           </h4>
-          <p className="text-sm text-blue-900 dark:text-blue-300">
+          <p className="text-sm text-blue-600 dark:text-blue-300">
             When you upload images to PhotoSense, they are automatically
             analyzed by AWS Rekognition to detect objects, faces, text, and
             more. With AWS SQS integration, you'll receive notifications when

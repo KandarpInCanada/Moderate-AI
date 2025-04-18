@@ -117,7 +117,7 @@ export default function NotificationsList() {
     return (
       <div className="p-4 text-center">
         <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400 mx-auto mb-2" />
-        <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         <button
           onClick={handleRefresh}
           className="mt-2 text-xs text-primary hover:underline"
@@ -130,13 +130,19 @@ export default function NotificationsList() {
 
   if (!notifications || notifications.length === 0) {
     return (
-      <div className="p-6 text-center">
+      <div className="p-6 text-center border rounded-lg bg-muted/30">
         <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">No notifications yet</p>
+        <p className="text-sm font-medium text-foreground mb-1">
+          No notifications yet
+        </p>
+        <p className="text-xs text-muted-foreground mb-3">
+          Notifications will appear here when your images are processed
+        </p>
         <button
           onClick={handleRefresh}
-          className="mt-2 text-xs text-primary hover:underline"
+          className="mt-2 text-xs px-3 py-1.5 bg-primary/10 text-primary rounded-md hover:bg-primary/20 inline-flex items-center"
         >
+          <RefreshCw className="h-3 w-3 mr-1.5" />
           Refresh
         </button>
       </div>
@@ -183,7 +189,7 @@ export default function NotificationsList() {
                       href={notification.imageUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block w-full h-20 bg-muted rounded-md overflow-hidden"
+                      className="block w-full h-20 bg-muted rounded-md overflow-hidden border border-border"
                     >
                       <img
                         src={notification.imageUrl || "/placeholder.svg"}

@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import Sidebar from "@/components/dashboard/sidebar";
 import GalleryGrid from "./gallery-grid";
 import GalleryFilters from "./gallery-filters";
 import ImageDetailView from "./image-detail-view";
 import type { ImageMetadata } from "@/types/image";
+import useSWR from "swr";
+import { Suspense } from "react";
 
 // Status types for filtering
 export type ModerationStatus =
@@ -17,19 +18,28 @@ export type ModerationStatus =
   | "all"
   | "text";
 
+// Add SWR fetcher function
+const fetcher = async (url: string, token: string) => {
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error("Failed to fetch images");
+  return res.json();
+};
+
 export default function GalleryContainer() {
   const [activeFilter, setActiveFilter] = useState<ModerationStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
-  const [images, setImages] = useState<ImageMetadata[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
     null
   );
 
   const { user, loading: authLoading, session } = useAuth();
   const router = useRouter();
+  const token = session?.access_token;
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -37,63 +47,23 @@ export default function GalleryContainer() {
     }
   }, [user, authLoading, router]);
 
-  // Fetch images when the component mounts and user is authenticated
+  // Use SWR for data fetching with caching and revalidation
+  const { data, error, isLoading, mutate } = useSWR(
+    token ? ["/api/images", token] : null,
+    ([url, token]) => fetcher(url, token),
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 30000, // 30 seconds
+    }
+  );
+
+  // Refresh data when filter changes
   useEffect(() => {
-    const fetchImages = async () => {
-      if (!user || !session?.access_token) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch("/api/images", {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch images: ${response.status} ${response.statusText}`
-          );
-        }
-
-        const data = await response.json();
-
-        // Process the images to ensure they have all required fields
-        const processedImages = data.images.map((img: any) => ({
-          ...img,
-          // Convert string dates to Date objects if needed
-          lastModified: new Date(img.lastModified),
-          // Set uploadDate to lastModified if not present
-          uploadDate:
-            img.uploadDate || new Date(img.lastModified).toISOString(),
-          // Ensure these fields exist
-          labels: img.labels || [],
-          faces: img.faces || 0,
-          location: img.location || "",
-          confidence: img.confidence || 0,
-          dimensions: img.dimensions || "Unknown",
-          rekognitionDetails: img.rekognitionDetails || {
-            labels: [],
-            faces: 0,
-            celebrities: [],
-            text: [],
-            analyzedAt: new Date().toISOString(),
-          },
-        }));
-
-        setImages(processedImages);
-      } catch (err: any) {
-        console.error("Error fetching images:", err);
-        setError(err.message || "Failed to load images");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchImages();
-  }, [user, session]);
+    if (token) {
+      mutate();
+    }
+  }, [activeFilter, token, mutate]);
 
   // If still loading or not authenticated, show nothing
   if (authLoading || !user) {
@@ -102,65 +72,60 @@ export default function GalleryContainer() {
 
   return (
     <>
-      <Sidebar activeView="gallery" onNavigate={() => {}} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto p-6 bg-background">
-          <div className="max-w-7xl mx-auto">
-            {/* Page intro */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
-                Photo Gallery
-              </h2>
-              <p className="text-muted-foreground mt-1">
-                Browse and search your photos with AI-powered labels from AWS
-                Rekognition
-              </p>
+      {selectedImage ? (
+        <ImageDetailView
+          image={selectedImage}
+          onBack={() => setSelectedImage(null)}
+        />
+      ) : (
+        <>
+          {/* Filters */}
+          <GalleryFilters
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+          />
+
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
+              <p className="text-red-700 dark:text-red-400">{error.message}</p>
+              <button
+                onClick={() => mutate()}
+                className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+              >
+                Try again
+              </button>
             </div>
+          )}
 
-            {selectedImage ? (
-              <ImageDetailView
-                image={selectedImage}
-                onBack={() => setSelectedImage(null)}
-              />
-            ) : (
-              <>
-                {/* Filters */}
-                <GalleryFilters
-                  activeFilter={activeFilter}
-                  onFilterChange={setActiveFilter}
-                  searchQuery={searchQuery}
-                  onSearchChange={setSearchQuery}
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
-                />
-
-                {/* Error message */}
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
-                    <p className="text-red-700 dark:text-red-400">{error}</p>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                )}
-
-                {/* Gallery Grid */}
-                <GalleryGrid
-                  activeFilter={activeFilter}
-                  searchQuery={searchQuery}
-                  sortBy={sortBy}
-                  images={images}
-                  loading={loading}
-                  onSelectImage={setSelectedImage}
-                />
-              </>
-            )}
-          </div>
-        </main>
-      </div>
+          {/* Gallery Grid with Suspense for better loading */}
+          <Suspense
+            fallback={
+              <div className="min-h-[400px] flex items-center justify-center">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-muted-foreground">
+                    Loading your images...
+                  </p>
+                </div>
+              </div>
+            }
+          >
+            <GalleryGrid
+              activeFilter={activeFilter}
+              searchQuery={searchQuery}
+              sortBy={sortBy}
+              images={data?.images || []}
+              loading={isLoading}
+              onSelectImage={setSelectedImage}
+            />
+          </Suspense>
+        </>
+      )}
     </>
   );
 }

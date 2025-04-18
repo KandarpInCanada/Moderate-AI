@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import Sidebar from "@/components/dashboard/sidebar";
 import UploadArea from "./upload-area";
 import UploadedFiles from "./uploaded-files";
 import type { FileWithPreview } from "@/types/file";
@@ -151,89 +150,73 @@ export default function UploadContainer() {
   };
 
   return (
-    <>
-      <Sidebar activeView="upload" onNavigate={() => {}} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto p-6 bg-background">
-          <div className="max-w-7xl mx-auto">
-            {/* Page intro */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
-                Upload Images
-              </h2>
-              <p className="text-muted-foreground mt-1">
-                Upload your photos for AI-powered organization and analysis with
-                AWS Rekognition.
-              </p>
-            </div>
+    <div className="max-w-7xl mx-auto">
+      {/* Page intro */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-foreground">Upload Images</h2>
+        <p className="text-muted-foreground mt-1">
+          Upload your photos for AI-powered organization and analysis with AWS
+          Rekognition.
+        </p>
+      </div>
 
-            {/* Upload area */}
-            <div className="bg-card rounded-xl shadow-sm border border-border p-6 mb-6 transition-all hover:shadow-md">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
-                Upload Files
-              </h3>
-              <UploadArea
-                onFilesAdded={handleFilesAdded}
-                disabled={uploading}
-              />
-            </div>
+      {/* Upload area */}
+      <div className="bg-card rounded-xl shadow-sm border border-border p-6 mb-6 transition-all hover:shadow-md">
+        <h3 className="text-lg font-semibold text-foreground mb-4">
+          Upload Files
+        </h3>
+        <UploadArea onFilesAdded={handleFilesAdded} disabled={uploading} />
+      </div>
 
-            {/* Status messages */}
-            {uploadComplete && (
-              <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-xl p-4 flex items-start">
-                <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-green-800 dark:text-green-400">
-                    Upload Complete
-                  </h4>
-                  <p className="text-green-700 dark:text-green-500 text-sm">
-                    Your files have been uploaded to your personal folder and
-                    queued for AI analysis.
-                  </p>
-                  {uploadedUrls.length > 0 && (
-                    <div className="mt-2 text-xs text-green-700 dark:text-green-500">
-                      <p>
-                        Files uploaded to your personal folder: {user.email}
-                      </p>
-                    </div>
-                  )}
-                </div>
+      {/* Status messages */}
+      {uploadComplete && (
+        <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-xl p-4 flex items-start">
+          <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-green-800 dark:text-green-400">
+              Upload Complete
+            </h4>
+            <p className="text-green-700 dark:text-green-500 text-sm">
+              Your files have been uploaded to your personal folder and queued
+              for AI analysis.
+            </p>
+            {uploadedUrls.length > 0 && (
+              <div className="mt-2 text-xs text-green-700 dark:text-green-500">
+                <p>Files uploaded to your personal folder: {user.email}</p>
               </div>
-            )}
-
-            {error && (
-              <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <h4 className="font-medium text-red-800 dark:text-red-400">
-                    Upload Failed
-                  </h4>
-                  <p className="text-red-700 dark:text-red-500 text-sm">
-                    {error}
-                  </p>
-
-                  {detailedError && (
-                    <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded text-xs font-mono whitespace-pre-wrap text-red-800 dark:text-red-300 max-h-40 overflow-auto">
-                      {detailedError}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* File list */}
-            {files.length > 0 && (
-              <UploadedFiles
-                files={files}
-                onRemove={handleRemoveFile}
-                onUpload={handleUpload}
-                uploading={uploading}
-                progress={uploadProgress}
-              />
             )}
           </div>
-        </main>
-      </div>
-    </>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 flex items-start">
+          <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h4 className="font-medium text-red-800 dark:text-red-400">
+              Upload Failed
+            </h4>
+            <p className="text-red-700 dark:text-red-500 text-sm">{error}</p>
+
+            {detailedError && (
+              <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded text-xs font-mono whitespace-pre-wrap text-red-800 dark:text-red-300 max-h-40 overflow-auto">
+                {detailedError}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* File list */}
+      {files.length > 0 && (
+        <UploadedFiles
+          files={files}
+          onRemove={handleRemoveFile}
+          onUpload={handleUpload}
+          uploading={uploading}
+          progress={uploadProgress}
+        />
+      )}
+    </div>
   );
 }
