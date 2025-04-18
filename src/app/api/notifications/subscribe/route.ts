@@ -39,7 +39,23 @@ export async function POST(request: Request) {
       !process.env.NEXT_AWS_REGION ||
       !process.env.NEXT_AWS_ACCOUNT_ID
     ) {
-      return NextResponse.json({ error: "Server configuration error: SNS not configured" }, { status: 500 })
+      // Log which specific variables are missing for debugging
+      const missingVars = [
+        !process.env.NEXT_AWS_ACCESS_KEY_ID ? "NEXT_AWS_ACCESS_KEY_ID" : null,
+        !process.env.NEXT_AWS_SECRET_ACCESS_KEY ? "NEXT_AWS_SECRET_ACCESS_KEY" : null,
+        !process.env.NEXT_AWS_REGION ? "NEXT_AWS_REGION" : null,
+        !process.env.NEXT_AWS_ACCOUNT_ID ? "NEXT_AWS_ACCOUNT_ID" : null,
+      ].filter(Boolean)
+
+      console.error("SNS configuration error - missing environment variables:", missingVars)
+
+      return NextResponse.json(
+        {
+          error: "Server configuration error: SNS not configured",
+          missingVariables: missingVars,
+        },
+        { status: 500 },
+      )
     }
 
     // Get user identifier (email or ID)

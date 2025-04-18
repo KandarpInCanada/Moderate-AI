@@ -1,9 +1,14 @@
-// Replace the entire file with this simplified version that only handles SNS subscription
 "use client";
 
 import type React from "react";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { useAuth } from "@/context/auth-context";
 import { getUserTopicArn } from "@/lib/sns-client";
 
@@ -15,6 +20,7 @@ type NotificationsContextType = {
   isSubscribing: boolean;
   subscriptionError: string | null;
   subscriptionSuccess: boolean;
+  isConfigured: boolean;
 };
 
 const NotificationsContext = createContext<NotificationsContextType>({
@@ -25,6 +31,7 @@ const NotificationsContext = createContext<NotificationsContextType>({
   isSubscribing: false,
   subscriptionError: null,
   subscriptionSuccess: false,
+  isConfigured: false,
 });
 
 export const NotificationsProvider = ({
@@ -40,10 +47,27 @@ export const NotificationsProvider = ({
   );
   const [subscriptionSuccess, setSubscriptionSuccess] =
     useState<boolean>(false);
+  const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const { user, session } = useAuth();
 
+  // Check if SNS is configured
+  useEffect(() => {
+    const checkConfiguration = async () => {
+      try {
+        const response = await fetch("/api/notifications/check-config");
+        const data = await response.json();
+        setIsConfigured(data.configured);
+      } catch (error) {
+        console.error("Error checking SNS configuration:", error);
+        setIsConfigured(false);
+      }
+    };
+
+    checkConfiguration();
+  }, []);
+
   // Load enabled state from localStorage on mount
-  useState(() => {
+  useEffect(() => {
     if (user) {
       const storedEnabled = localStorage.getItem(
         `photosense-notifications-enabled-${user.id}`
@@ -58,17 +82,17 @@ export const NotificationsProvider = ({
         setTopicArn(arn);
       }
     }
-  });
+  }, [user]);
 
   // Save enabled state to localStorage when it changes
-  useState(() => {
+  useEffect(() => {
     if (user) {
       localStorage.setItem(
         `photosense-notifications-enabled-${user.id}`,
         enabled.toString()
       );
     }
-  });
+  }, [enabled, user]);
 
   // Subscribe to SNS topic
   const subscribeToSNS = useCallback(async () => {
@@ -96,6 +120,19 @@ export const NotificationsProvider = ({
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Check if we have detailed information about missing variables
+        if (
+          errorData.missingVariables &&
+          errorData.missingVariables.length > 0
+        ) {
+          throw new Error(
+            `SNS not configured. Missing environment variables: ${errorData.missingVariables.join(
+              ", "
+            )}`
+          );
+        }
+
         throw new Error(
           errorData.error || "Failed to subscribe to notifications"
         );
@@ -128,6 +165,7 @@ export const NotificationsProvider = ({
         isSubscribing,
         subscriptionError,
         subscriptionSuccess,
+        isConfigured,
       }}
     >
       {children}

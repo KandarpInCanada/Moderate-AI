@@ -2,7 +2,7 @@
 import { useState } from "react";
 import NotificationToggle from "./notification-toggle";
 import { useNotifications } from "@/context/notifications-context";
-import { AlertCircle, CheckCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle, RefreshCw, Info } from "lucide-react";
 
 export default function NotificationSettings() {
   const {
@@ -11,6 +11,7 @@ export default function NotificationSettings() {
     isSubscribing,
     subscriptionError,
     subscriptionSuccess,
+    isConfigured,
   } = useNotifications();
 
   const [showSubscribeSuccess, setShowSubscribeSuccess] = useState(false);
@@ -23,6 +24,21 @@ export default function NotificationSettings() {
     setTimeout(() => {
       setShowSubscribeSuccess(false);
     }, 5000);
+  };
+
+  // Add a helper function to display missing variables if they're in the error message
+  const extractMissingVars = (errorMessage: string | null) => {
+    if (!errorMessage) return null;
+
+    // Check if the error message contains information about missing variables
+    if (errorMessage.includes("Missing environment variables:")) {
+      return errorMessage
+        .split("Missing environment variables:")[1]
+        .trim()
+        .split(", ");
+    }
+
+    return null;
   };
 
   return (
@@ -63,9 +79,9 @@ export default function NotificationSettings() {
               </div>
               <button
                 onClick={handleSubscribe}
-                disabled={isSubscribing}
+                disabled={isSubscribing || !isConfigured}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center ${
-                  isSubscribing
+                  isSubscribing || !isConfigured
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
@@ -84,13 +100,49 @@ export default function NotificationSettings() {
               </button>
             </div>
 
+            {/* Configuration warning */}
+            {!isConfigured && (
+              <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 rounded-md p-2 flex items-start">
+                <Info className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    AWS SNS is not configured. Please add the required
+                    environment variables:
+                  </p>
+                  <ul className="text-xs text-amber-700 dark:text-amber-400 mt-1 list-disc list-inside">
+                    <li>NEXT_AWS_ACCESS_KEY_ID</li>
+                    <li>NEXT_AWS_SECRET_ACCESS_KEY</li>
+                    <li>NEXT_AWS_REGION</li>
+                    <li>NEXT_AWS_ACCOUNT_ID</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {/* Subscription status messages */}
             {subscriptionError && (
               <div className="mt-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-md p-2 flex items-start">
                 <AlertCircle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 mr-2 flex-shrink-0" />
-                <p className="text-xs text-red-700 dark:text-red-400">
-                  {subscriptionError}
-                </p>
+                <div>
+                  <p className="text-xs text-red-700 dark:text-red-400">
+                    {subscriptionError}
+                  </p>
+
+                  {extractMissingVars(subscriptionError) && (
+                    <div className="mt-2">
+                      <p className="text-xs font-medium text-red-700 dark:text-red-400">
+                        Please add these environment variables to your project:
+                      </p>
+                      <ul className="text-xs text-red-700 dark:text-red-400 mt-1 list-disc list-inside">
+                        {extractMissingVars(subscriptionError)?.map(
+                          (variable) => (
+                            <li key={variable}>{variable}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
