@@ -130,7 +130,7 @@ export default function NotificationSettings() {
               <div className="mt-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-md p-2 flex items-start">
                 <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 mr-2 flex-shrink-0" />
                 <p className="text-xs text-green-700 dark:text-green-400">
-                  Successfully subscribed to SNS notifications
+                  Successfully subscribed to SNS notifications using HTTP
                 </p>
               </div>
             )}

@@ -86,9 +86,11 @@ export const NotificationsProvider = ({
     try {
       // For web applications, we'll use an HTTPS endpoint
       // Make sure the endpoint is a complete URL with https:// protocol
+      // Create an HTTP endpoint by replacing https with http in the origin
+      const httpOrigin = window.location.origin.replace("https://", "http://");
       const endpoint = new URL(
         "/api/notifications/webhook",
-        window.location.origin
+        httpOrigin
       ).toString();
       console.log(`Using endpoint for subscription: ${endpoint}`);
 
@@ -100,7 +102,7 @@ export const NotificationsProvider = ({
         },
         body: JSON.stringify({
           endpoint,
-          protocol: "https",
+          protocol: "http", // Changed from "https" to "http"
         }),
       });
 
