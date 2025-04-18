@@ -1,71 +1,197 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ImageIcon, Tag, Users, Search, Calendar } from "lucide-react";
-
-// Sample data for the dashboard
-const photoStats = {
-  totalImages: 1248,
-  peopleDetected: 837,
-  objectsLabeled: 3542,
-  textDetected: 215,
-  lastUpload: "2 hours ago",
-};
-
-// Sample recent activity
-const recentActivity = [
-  {
-    id: 1,
-    filename: "family-vacation.jpg",
-    timestamp: "2 minutes ago",
-    labels: ["People", "Beach", "Ocean", "Sunset"],
-    faces: 4,
-    confidence: 99.2,
-  },
-  {
-    id: 2,
-    filename: "office-meeting.png",
-    timestamp: "15 minutes ago",
-    labels: ["People", "Office", "Business", "Indoor"],
-    faces: 6,
-    confidence: 97.5,
-  },
-  {
-    id: 3,
-    filename: "city-skyline.jpg",
-    timestamp: "42 minutes ago",
-    labels: ["City", "Building", "Architecture", "Sky"],
-    faces: 0,
-    confidence: 98.7,
-  },
-  {
-    id: 4,
-    filename: "pet-dog.jpg",
-    timestamp: "1 hour ago",
-    labels: ["Dog", "Pet", "Animal", "Grass"],
-    faces: 0,
-    confidence: 99.3,
-  },
-  {
-    id: 5,
-    filename: "birthday-party.png",
-    timestamp: "2 hours ago",
-    labels: ["People", "Cake", "Celebration", "Indoor"],
-    faces: 8,
-    confidence: 96.8,
-  },
-];
-
-// Sample top categories
-const topCategories = [
-  { name: "People", count: 423 },
-  { name: "Nature", count: 287 },
-  { name: "Buildings", count: 156 },
-  { name: "Animals", count: 132 },
-  { name: "Food", count: 98 },
-  { name: "Vehicles", count: 76 },
-];
+import { useAuth } from "@/context/auth-context";
+import type { ImageMetadata } from "@/types/image";
 
 export default function ModerationOverview() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [photoStats, setPhotoStats] = useState({
+    totalImages: 0,
+    peopleDetected: 0,
+    objectsLabeled: 0,
+    textDetected: 0,
+    lastUpload: "N/A",
+  });
+  const [topCategories, setTopCategories] = useState<
+    { name: string; count: number }[]
+  >([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+  const { user, session } = useAuth();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !session?.access_token) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch("/api/images", {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch images: ${response.status} ${response.statusText}`
+          );
+        }
+
+        const data = await response.json();
+        const images: ImageMetadata[] = data.images || [];
+
+        // Process statistics
+        processImageStats(images);
+      } catch (err: any) {
+        console.error("Error fetching dashboard data:", err);
+        setError(err.message || "Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user, session]);
+
+  const processImageStats = (images: ImageMetadata[]) => {
+    if (!images.length) return;
+
+    // Calculate basic stats
+    const totalImages = images.length;
+
+    // Count people (faces)
+    const peopleDetected = images.reduce(
+      (sum, img) => sum + (img.faces || 0),
+      0
+    );
+
+    // Count all labels
+    const allLabels: string[] = [];
+    const labelCounts: Record<string, number> = {};
+
+    // Count text detected images
+    const textDetected = images.filter(
+      (img) =>
+        img.rekognitionDetails?.text && img.rekognitionDetails.text.length > 0
+    ).length;
+
+    // Process all labels and count occurrences
+    images.forEach((img) => {
+      if (img.labels && img.labels.length) {
+        img.labels.forEach((label) => {
+          allLabels.push(label);
+          labelCounts[label] = (labelCounts[label] || 0) + 1;
+        });
+      }
+    });
+
+    // Get top categories
+    const topCats = Object.entries(labelCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+
+    // Get recent activity (5 most recent images)
+    const recent = [...images]
+      .sort((a, b) => {
+        const dateA = new Date(a.lastModified).getTime();
+        const dateB = new Date(b.lastModified).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 5)
+      .map((img) => ({
+        id: img.id,
+        filename: img.filename,
+        timestamp: formatTimeAgo(img.lastModified),
+        labels: img.labels || [],
+        faces: img.faces || 0,
+        confidence: img.rekognitionDetails?.labels?.[0]?.confidence || 95,
+      }));
+
+    // Find last upload time
+    const lastUpload = recent.length > 0 ? recent[0].timestamp : "N/A";
+
+    // Update state
+    setPhotoStats({
+      totalImages,
+      peopleDetected,
+      objectsLabeled: allLabels.length,
+      textDetected,
+      lastUpload,
+    });
+
+    setTopCategories(topCats);
+    setRecentActivity(recent);
+  };
+
+  const formatTimeAgo = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+    const diffHours = Math.round(diffMins / 60);
+    const diffDays = Math.round(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-foreground">
+            Photo Analysis Dashboard
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Smart photo organization powered by AWS Rekognition
+          </p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-muted-foreground">Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-foreground">
+            Photo Analysis Dashboard
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Smart photo organization powered by AWS Rekognition
+          </p>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-6">
+          <h3 className="text-lg font-medium text-red-800 dark:text-red-400 mb-2">
+            Error Loading Dashboard
+          </h3>
+          <p className="text-red-700 dark:text-red-500">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
@@ -160,26 +286,36 @@ export default function ModerationOverview() {
             </button>
           </div>
 
-          <div className="space-y-4">
-            {topCategories.map((category) => (
-              <div
-                key={category.name}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center mr-3">
-                    <Tag className="h-4 w-4 text-primary" />
+          {topCategories.length > 0 ? (
+            <div className="space-y-4">
+              {topCategories.map((category) => (
+                <div
+                  key={category.name}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center mr-3">
+                      <Tag className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      {category.name}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-foreground">
-                    {category.name}
+                  <span className="text-sm text-muted-foreground">
+                    {category.count} photos
                   </span>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {category.count} photos
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Tag className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">No categories found</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload photos to see categories
+              </p>
+            </div>
+          )}
 
           <div className="mt-6 pt-4 border-t border-border">
             <button className="w-full py-2 text-sm text-center text-primary font-medium hover:text-primary/90">
@@ -198,75 +334,92 @@ export default function ModerationOverview() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <th className="px-4 py-3 border-b border-border">Photo</th>
-                  <th className="px-4 py-3 border-b border-border">Time</th>
-                  <th className="px-4 py-3 border-b border-border">Labels</th>
-                  <th className="px-4 py-3 border-b border-border">Faces</th>
-                  <th className="px-4 py-3 border-b border-border">
-                    Confidence
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentActivity.map((item) => (
-                  <tr key={item.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
-                          <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-foreground">
-                            {item.filename}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <p className="text-sm text-muted-foreground">
-                        {item.timestamp}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {item.labels.map((label, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
-                        <Users className="mr-1 h-3 w-3" />
-                        {item.faces}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-16 bg-muted rounded-full h-2.5">
-                          <div
-                            className="h-2.5 rounded-full bg-green-500"
-                            style={{ width: `${item.confidence}%` }}
-                          ></div>
-                        </div>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {item.confidence}%
-                        </span>
-                      </div>
-                    </td>
+          {recentActivity.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-4 py-3 border-b border-border">Photo</th>
+                    <th className="px-4 py-3 border-b border-border">Time</th>
+                    <th className="px-4 py-3 border-b border-border">Labels</th>
+                    <th className="px-4 py-3 border-b border-border">Faces</th>
+                    <th className="px-4 py-3 border-b border-border">
+                      Confidence
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {recentActivity.map((item) => (
+                    <tr key={item.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-foreground">
+                              {item.filename}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <p className="text-sm text-muted-foreground">
+                          {item.timestamp}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {item.labels
+                            .slice(0, 3)
+                            .map((label: string, index: number) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
+                              >
+                                {label}
+                              </span>
+                            ))}
+                          {item.labels.length > 3 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                              +{item.labels.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                          <Users className="mr-1 h-3 w-3" />
+                          {item.faces}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-16 bg-muted rounded-full h-2.5">
+                            <div
+                              className="h-2.5 rounded-full bg-green-500"
+                              style={{ width: `${item.confidence}%` }}
+                            ></div>
+                          </div>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {item.confidence.toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No recent activity</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload photos to see recent activity
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

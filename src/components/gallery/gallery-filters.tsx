@@ -1,6 +1,14 @@
 "use client";
 
-import { Search, SlidersHorizontal, Tag, Users, MapPin } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  Tag,
+  Users,
+  MapPin,
+  Text,
+  ImageIcon,
+} from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
 
 interface GalleryFiltersProps {
@@ -10,6 +18,9 @@ interface GalleryFiltersProps {
   onSearchChange: (query: string) => void;
   sortBy: "newest" | "oldest" | "name";
   onSortChange: (sort: "newest" | "oldest" | "name") => void;
+  labelCategories: string[];
+  activeLabel: string | null;
+  onLabelChange: (label: string | null) => void;
 }
 
 export default function GalleryFilters({
@@ -19,6 +30,9 @@ export default function GalleryFilters({
   onSearchChange,
   sortBy,
   onSortChange,
+  labelCategories,
+  activeLabel,
+  onLabelChange,
 }: GalleryFiltersProps) {
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border p-5 mb-6 transition-all hover:shadow-md">
@@ -47,13 +61,14 @@ export default function GalleryFilters({
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
+            <ImageIcon className="h-3.5 w-3.5 mr-1 inline-block" />
             All
           </button>
           <button
             onClick={() => onFilterChange("approved")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "approved"
-                ? "bg-card text-green-600 dark:text-green-400 shadow-sm"
+                ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
@@ -75,12 +90,23 @@ export default function GalleryFilters({
             onClick={() => onFilterChange("pending")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
               activeFilter === "pending"
-                ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-sm"
+                ? "bg-card text-green-600 dark:text-green-400 shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
             }`}
           >
             <MapPin className="h-3.5 w-3.5 mr-1" />
             Places
+          </button>
+          <button
+            onClick={() => onFilterChange("text")}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center ${
+              activeFilter === "text"
+                ? "bg-card text-blue-600 dark:text-blue-400 shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+            }`}
+          >
+            <Text className="h-3.5 w-3.5 mr-1" />
+            Text
           </button>
         </div>
 
@@ -100,6 +126,41 @@ export default function GalleryFilters({
           </select>
         </div>
       </div>
+
+      {/* Label categories */}
+      {labelCategories.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="flex items-center mb-2">
+            <Tag className="h-4 w-4 text-muted-foreground mr-2" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Filter by Label:
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {activeLabel && (
+              <button
+                onClick={() => onLabelChange(null)}
+                className="px-2 py-1 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-muted/80"
+              >
+                Clear Filter
+              </button>
+            )}
+            {labelCategories.map((label) => (
+              <button
+                key={label}
+                onClick={() => onLabelChange(label)}
+                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                  activeLabel === label
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted/50 text-foreground hover:bg-muted"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

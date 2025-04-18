@@ -8,7 +8,7 @@ import {
   Eye,
   Download,
   MoreHorizontal,
-  Search,
+  Text,
 } from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
 import type { ImageMetadata } from "@/types/image";
@@ -20,6 +20,7 @@ interface GalleryGridProps {
   images: ImageMetadata[];
   loading: boolean;
   onSelectImage: (image: ImageMetadata) => void;
+  activeLabel: string | null;
 }
 
 export default function GalleryGrid({
@@ -29,6 +30,7 @@ export default function GalleryGrid({
   images,
   loading,
   onSelectImage,
+  activeLabel,
 }: GalleryGridProps) {
   const [showDropdownId, setShowDropdownId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -54,6 +56,16 @@ export default function GalleryGrid({
         } else if (activeFilter === "pending") {
           // "pending" is now "Places" filter
           matchesFilter = image.location !== "";
+        } else if (activeFilter === "text") {
+          // "text" is for images with detected text
+          matchesFilter =
+            image.rekognitionDetails?.text &&
+            image.rekognitionDetails.text.length > 0;
+        }
+
+        // Filter by active label if selected
+        if (activeLabel) {
+          matchesFilter = matchesFilter && image.labels.includes(activeLabel);
         }
 
         // Search in filename, labels, and location
@@ -122,7 +134,9 @@ export default function GalleryGrid({
       image.rekognitionDetails.text &&
       image.rekognitionDetails.text.length > 0
     ) {
-      return <Search className="h-4 w-4" />;
+      return <Text className="h-4 w-4" />;
+    } else if (image.location) {
+      return <MapPin className="h-4 w-4" />;
     } else {
       return <Tag className="h-4 w-4" />;
     }
@@ -135,9 +149,26 @@ export default function GalleryGrid({
       image.rekognitionDetails.text &&
       image.rekognitionDetails.text.length > 0
     ) {
+      return "bg-blue-600 text-white dark:bg-blue-500 dark:text-white border-blue-700 dark:border-blue-600";
+    } else if (image.location) {
       return "bg-green-600 text-white dark:bg-green-500 dark:text-white border-green-700 dark:border-green-600";
     } else {
       return "bg-purple-600 text-white dark:bg-purple-500 dark:text-white border-purple-700 dark:border-purple-600";
+    }
+  };
+
+  const getStatusText = (image: ImageMetadata) => {
+    if (image.faces > 0) {
+      return `${image.faces} ${image.faces === 1 ? "Person" : "People"}`;
+    } else if (
+      image.rekognitionDetails.text &&
+      image.rekognitionDetails.text.length > 0
+    ) {
+      return "Text";
+    } else if (image.location) {
+      return image.location;
+    } else {
+      return image.labels[0] || "Image";
     }
   };
 
@@ -175,6 +206,15 @@ export default function GalleryGrid({
     );
   }
 
+  // Get filter description
+  const getFilterDescription = () => {
+    if (activeFilter === "approved") return "people";
+    if (activeFilter === "flagged") return "objects";
+    if (activeFilter === "pending") return "places";
+    if (activeFilter === "text") return "text";
+    return "";
+  };
+
   return (
     <>
       {sortedImages.length === 0 ? (
@@ -187,13 +227,11 @@ export default function GalleryGrid({
           </h3>
           <p className="text-muted-foreground max-w-md mx-auto">
             {activeFilter !== "all"
-              ? `No ${
-                  activeFilter === "approved"
-                    ? "people"
-                    : activeFilter === "flagged"
-                    ? "objects"
-                    : "places"
-                } found in your photos. Try changing your filter or uploading new images.`
+              ? `No photos with ${getFilterDescription()} found${
+                  activeLabel ? ` with label "${activeLabel}"` : ""
+                }. Try changing your filter or uploading new images.`
+              : activeLabel
+              ? `No photos with label "${activeLabel}" found. Try a different label or upload new images.`
               : searchQuery
               ? "No photos match your search. Try a different search term."
               : "You haven't uploaded any photos yet. Upload some photos to see them here."}
@@ -231,26 +269,18 @@ export default function GalleryGrid({
                     )}`}
                   >
                     {getStatusIcon(image)}
-                    <span className="ml-1">
-                      {image.faces > 0
-                        ? `${image.faces} ${
-                            image.faces === 1 ? "Person" : "People"
-                          }`
-                        : image.rekognitionDetails.text &&
-                          image.rekognitionDetails.text.length > 0
-                        ? "Text"
-                        : "Image"}
-                    </span>
+                    <span className="ml-1">{getStatusText(image)}</span>
                   </span>
                 </div>
-                {image.location && (
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/60 text-white border border-white/20">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      <span className="truncate">{image.location}</span>
-                    </span>
-                  </div>
-                )}
+                {image.location &&
+                  !image.location.includes(getStatusText(image)) && (
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-black/60 text-white border border-white/20">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        <span className="truncate">{image.location}</span>
+                      </span>
+                    </div>
+                  )}
               </div>
               <div className="p-4">
                 <div className="flex items-center justify-between">

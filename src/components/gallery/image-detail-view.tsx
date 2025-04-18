@@ -6,10 +6,13 @@ import {
   MapPin,
   Download,
   ArrowLeft,
-  Search,
   Edit,
+  Text,
+  Clock,
+  Info,
 } from "lucide-react";
 import type { ImageMetadata } from "@/types/image";
+import { useState } from "react";
 
 interface ImageDetailViewProps {
   image: ImageMetadata;
@@ -20,6 +23,10 @@ export default function ImageDetailView({
   image,
   onBack,
 }: ImageDetailViewProps) {
+  const [activeTab, setActiveTab] = useState<"info" | "labels" | "text">(
+    "info"
+  );
+
   const formatDate = (dateString: string | Date) => {
     // Use a fixed format that will be consistent between server and client
     const date = new Date(dateString);
@@ -98,224 +105,298 @@ export default function ImageDetailView({
 
           {/* Details section */}
           <div className="lg:w-2/5 p-6 overflow-y-auto border-t lg:border-t-0 lg:border-l border-border">
-            <h3 className="text-lg font-medium text-foreground mb-4">
-              Image Information
-            </h3>
-
-            <div className="space-y-6">
-              {/* Basic info */}
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Uploaded
-                  </span>
-                  <span className="text-sm font-medium text-foreground">
-                    {formatDate(image.lastModified)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Size</span>
-                  <span className="text-sm font-medium text-foreground">
-                    {formatFileSize(image.size)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Dimensions
-                  </span>
-                  <span className="text-sm font-medium text-foreground">
-                    {image.dimensions || "Unknown"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    File Path
-                  </span>
-                  <span
-                    className="text-sm font-medium text-foreground truncate"
-                    title={image.key}
+            {/* Tabs */}
+            <div className="flex border-b border-border mb-4">
+              <button
+                onClick={() => setActiveTab("info")}
+                className={`px-4 py-2 text-sm font-medium ${
+                  activeTab === "info"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Info className="h-4 w-4 inline-block mr-1" />
+                Info
+              </button>
+              <button
+                onClick={() => setActiveTab("labels")}
+                className={`px-4 py-2 text-sm font-medium ${
+                  activeTab === "labels"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Tag className="h-4 w-4 inline-block mr-1" />
+                Labels
+              </button>
+              {image.rekognitionDetails.text &&
+                image.rekognitionDetails.text.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab("text")}
+                    className={`px-4 py-2 text-sm font-medium ${
+                      activeTab === "text"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    {image.key}
-                  </span>
-                </div>
-              </div>
+                    <Text className="h-4 w-4 inline-block mr-1" />
+                    Text
+                  </button>
+                )}
+            </div>
 
-              {/* Tags section */}
-              <div className="mb-6 flex flex-wrap gap-2">
-                {image.faces > 0 && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/30">
-                    <Users className="h-4 w-4 mr-1" />
-                    {image.faces} {image.faces === 1 ? "Person" : "People"}
-                  </span>
-                )}
-                {image.location && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800/30">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {image.location}
-                  </span>
-                )}
-                {image.rekognitionDetails.text &&
-                  image.rekognitionDetails.text.length > 0 && (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800/30">
-                      <Search className="h-4 w-4 mr-1" />
-                      Text Detected
+            {activeTab === "info" && (
+              <div className="space-y-6">
+                {/* Basic info */}
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Uploaded
                     </span>
-                  )}
-              </div>
-
-              {/* AWS Rekognition details */}
-              {(image.rekognitionDetails.labels.length > 0 ||
-                image.rekognitionDetails.faces > 0 ||
-                image.rekognitionDetails.celebrities.length > 0 ||
-                image.rekognitionDetails.text.length > 0) && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                    AWS Rekognition Analysis
-                  </h3>
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-4">
-                    {/* Labels */}
-                    {image.rekognitionDetails.labels.length > 0 && (
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-foreground">
-                            Labels
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {image.rekognitionDetails.labels.length} detected
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {image.rekognitionDetails.labels.map(
-                            (label, index) => (
-                              <div key={index} className="group relative">
-                                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
-                                  <Tag className="h-3 w-3 mr-1" />
-                                  {label.name}
-                                </span>
-                                <div className="absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2 px-2 py-1 bg-foreground text-background text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                  {label.confidence.toFixed(1)}% confidence
-                                </div>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Faces */}
-                    {image.rekognitionDetails.faces > 0 && (
-                      <div className="pt-3 border-t border-border">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-foreground">
-                            Faces
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {image.rekognitionDetails.faces} detected
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="h-8 w-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mr-2">
-                            <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                          </div>
-                          <span className="text-sm text-foreground">
-                            {image.rekognitionDetails.faces}{" "}
-                            {image.rekognitionDetails.faces === 1
-                              ? "person"
-                              : "people"}{" "}
-                            detected in this image
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Celebrities */}
-                    {image.rekognitionDetails.celebrities &&
-                      image.rekognitionDetails.celebrities.length > 0 && (
-                        <div className="pt-3 border-t border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-foreground">
-                              Celebrities
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {image.rekognitionDetails.celebrities.length}{" "}
-                              recognized
-                            </span>
-                          </div>
-                          {image.rekognitionDetails.celebrities.map(
-                            (celebrity, index) => (
-                              <div
-                                key={index}
-                                className="flex items-center justify-between"
-                              >
-                                <span className="text-sm text-foreground">
-                                  {celebrity.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {celebrity.confidence.toFixed(1)}% confidence
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      )}
-
-                    {/* Text */}
-                    {image.rekognitionDetails.text &&
-                      image.rekognitionDetails.text.length > 0 && (
-                        <div className="pt-3 border-t border-border">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-foreground">
-                              Text Detected
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {image.rekognitionDetails.text.length} items
-                            </span>
-                          </div>
-                          <div className="bg-background/50 p-2 rounded-md">
-                            {image.rekognitionDetails.text.map(
-                              (text, index) => (
-                                <div
-                                  key={index}
-                                  className="text-sm text-foreground"
-                                >
-                                  "{text}"
-                                </div>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      )}
+                    <span className="text-sm font-medium text-foreground">
+                      {formatDate(image.lastModified)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Size</span>
+                    <span className="text-sm font-medium text-foreground">
+                      {formatFileSize(image.size)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Dimensions
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {image.dimensions || "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      File Path
+                    </span>
+                    <span
+                      className="text-sm font-medium text-foreground truncate"
+                      title={image.key}
+                    >
+                      {image.key}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Analysis Date
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {formatDate(image.rekognitionDetails.analyzedAt)}
+                    </span>
                   </div>
                 </div>
-              )}
-              {/* If no Rekognition data is available */}
-              {image.rekognitionDetails.labels.length === 0 &&
-                image.rekognitionDetails.faces === 0 &&
-                image.rekognitionDetails.celebrities.length === 0 &&
-                image.rekognitionDetails.text.length === 0 && (
+
+                {/* Tags section */}
+                <div className="mb-6 flex flex-wrap gap-2">
+                  {image.faces > 0 && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/30">
+                      <Users className="h-4 w-4 mr-1" />
+                      {image.faces} {image.faces === 1 ? "Person" : "People"}
+                    </span>
+                  )}
+                  {image.location && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800/30">
+                      <MapPin className="h-4 w-4 mr-1" />
+                      {image.location}
+                    </span>
+                  )}
+                  {image.rekognitionDetails.text &&
+                    image.rekognitionDetails.text.length > 0 && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800/30">
+                        <Text className="h-4 w-4 mr-1" />
+                        Text Detected
+                      </span>
+                    )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex space-x-3">
+                  <a
+                    href={image.url}
+                    download={image.filename}
+                    className="flex-1 flex justify-center items-center px-4 py-2 border border-border rounded-md shadow-sm text-sm font-medium text-foreground bg-card hover:bg-muted"
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download
+                  </a>
+                  <button className="flex-1 flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">
+                    <Edit className="h-5 w-5 mr-2" />
+                    Edit Labels
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "labels" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-foreground mb-4">
+                  AI-Detected Labels
+                </h3>
+
+                {/* Labels with confidence */}
+                {image.rekognitionDetails.labels.length > 0 ? (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      {image.rekognitionDetails.labels.map((label, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center">
+                            <Tag className="h-4 w-4 text-primary mr-2" />
+                            <span className="text-sm font-medium">
+                              {label.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <div className="w-24 bg-muted rounded-full h-1.5 mr-2">
+                              <div
+                                className="h-1.5 rounded-full bg-primary"
+                                style={{ width: `${label.confidence}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {label.confidence.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                   <div className="bg-muted/50 rounded-lg p-4 text-center">
                     <p className="text-sm text-muted-foreground">
-                      No AI analysis data available for this image yet.
+                      No labels detected for this image
                     </p>
                   </div>
                 )}
-            </div>
 
-            {/* Actions */}
-            <div className="mt-6 flex space-x-3">
-              <a
-                href={image.url}
-                download={image.filename}
-                className="flex-1 flex justify-center items-center px-4 py-2 border border-border rounded-md shadow-sm text-sm font-medium text-foreground bg-card hover:bg-muted"
-              >
-                <Download className="h-5 w-5 mr-2" />
-                Download
-              </a>
-              <button className="flex-1 flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90">
-                <Edit className="h-5 w-5 mr-2" />
-                Edit Labels
-              </button>
-            </div>
+                {/* Faces */}
+                {image.rekognitionDetails.faces > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-foreground mb-3">
+                      Faces Detected
+                    </h4>
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mr-3">
+                        <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {image.rekognitionDetails.faces}{" "}
+                          {image.rekognitionDetails.faces === 1
+                            ? "person"
+                            : "people"}{" "}
+                          detected
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          AWS Rekognition detected{" "}
+                          {image.rekognitionDetails.faces}{" "}
+                          {image.rekognitionDetails.faces === 1
+                            ? "face"
+                            : "faces"}{" "}
+                          in this image
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Celebrities */}
+                {image.rekognitionDetails.celebrities &&
+                  image.rekognitionDetails.celebrities.length > 0 && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-foreground mb-3">
+                        Celebrities Recognized
+                      </h4>
+                      <div className="space-y-2">
+                        {image.rekognitionDetails.celebrities.map(
+                          (celebrity, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between"
+                            >
+                              <span className="text-sm text-foreground">
+                                {celebrity.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {celebrity.confidence.toFixed(1)}% confidence
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Analysis timestamp */}
+                <div className="flex items-center justify-center text-xs text-muted-foreground mt-4">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Analyzed on {formatDate(image.rekognitionDetails.analyzedAt)}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "text" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-medium text-foreground mb-4">
+                  Detected Text
+                </h3>
+
+                {image.rekognitionDetails.text &&
+                image.rekognitionDetails.text.length > 0 ? (
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="space-y-3">
+                      {image.rekognitionDetails.text.map((text, index) => (
+                        <div
+                          key={index}
+                          className="p-3 bg-background/80 rounded-md"
+                        >
+                          <p className="text-sm text-foreground">"{text}"</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      AWS Rekognition detected{" "}
+                      {image.rekognitionDetails.text.length} text{" "}
+                      {image.rekognitionDetails.text.length === 1
+                        ? "item"
+                        : "items"}{" "}
+                      in this image
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-muted/50 rounded-lg p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No text detected in this image
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">
+                    About Text Detection
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-500">
+                    AWS Rekognition can detect and extract text from images,
+                    making it searchable. This is useful for documents, signs,
+                    labels, and other text content in your photos.
+                  </p>
+                </div>
+
+                {/* Analysis timestamp */}
+                <div className="flex items-center justify-center text-xs text-muted-foreground mt-4">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Analyzed on {formatDate(image.rekognitionDetails.analyzedAt)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
