@@ -6,8 +6,9 @@ import { useAuth } from "@/context/auth-context";
 import Sidebar from "@/components/dashboard/sidebar";
 import SettingsGeneral from "./settings-general";
 import SettingsAppearance from "./settings-appearance";
+import NotificationSettings from "../notifications/notification-settings";
 
-type SettingsTab = "general" | "appearance";
+type SettingsTab = "general" | "appearance" | "notifications";
 
 export default function SettingsContainer() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
@@ -64,6 +65,16 @@ export default function SettingsContainer() {
                   >
                     Appearance
                   </button>
+                  <button
+                    onClick={() => setActiveTab("notifications")}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      activeTab === "notifications"
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Notifications
+                  </button>
                 </nav>
               </div>
             </div>
@@ -72,6 +83,7 @@ export default function SettingsContainer() {
             <div className="bg-card rounded-xl shadow-sm border border-border p-6">
               {activeTab === "general" && <SettingsGeneral />}
               {activeTab === "appearance" && <SettingsAppearance />}
+              {activeTab === "notifications" && <NotificationSettings />}
             </div>
           </div>
         </main>
