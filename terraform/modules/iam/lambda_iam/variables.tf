@@ -8,7 +8,12 @@ variable "lambda_function_name" {
   description = "Name of the Lambda function"
 }
 
-variable "dynamodb_table_name" {
+variable "image_metadata_dynamodb_table_name" {
+  type        = string
+  description = "Target DynamoDB table name"
+}
+
+variable "notification_dynamodb_table_name" {
   type        = string
   description = "Target DynamoDB table name"
 }

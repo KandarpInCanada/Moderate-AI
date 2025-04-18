@@ -3,14 +3,15 @@ import os
 import json
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
 sns = boto3.client('sns')
 
 image_metadata_table_name = os.environ['DYNAMODB_TABLE_NAME']
-notifications_table_name = os.environ.get('NOTIFICATIONS_TABLE_NAME', 'Notifications')
-sns_topic_prefix = os.environ.get('SNS_TOPIC_PREFIX', 'user-notify-')
+notifications_table_name = os.environ['NOTIFICATIONS_TABLE_NAME']
+sns_topic_prefix = os.environ['SNS_TOPIC_PREFIX']
 
 image_metadata_table = dynamodb.Table(image_metadata_table_name)
 notifications_table = dynamodb.Table(notifications_table_name)
@@ -34,6 +35,17 @@ def get_or_create_topic(sanitized_email):
         print(f"Created SNS topic: {topic_arn}")
 
     return topic_arn
+
+# Helper function to convert floats to Decimals in a nested structure
+def convert_floats_to_decimals(obj):
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: convert_floats_to_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimals(i) for i in obj]
+    else:
+        return obj
 
 def handler(event, context):
     print("Received event:")
@@ -73,8 +85,8 @@ def handler(event, context):
                 Image={'S3Object': {'Bucket': bucket, 'Name': key}}
             )
 
-            # Process results
-            labels = [{'name': label['Name'], 'confidence': label['Confidence']} 
+            # Process results - Convert confidence values to Decimal
+            labels = [{'name': label['Name'], 'confidence': Decimal(str(label['Confidence']))} 
                      for label in labels_response['Labels']]
             
             face_count = len(faces_response['FaceDetails'])
@@ -104,6 +116,9 @@ def handler(event, context):
                 }
             }
 
+            # Convert any remaining float values to Decimal
+            metadata = convert_floats_to_decimals(metadata)
+
             # Store metadata to DynamoDB
             image_metadata_table.put_item(Item=metadata)
             print(f"Metadata successfully stored for {key}")
@@ -129,7 +144,7 @@ def handler(event, context):
             # Get or create SNS topic, then publish
             topic_arn = get_or_create_topic(sanitized_email)
 
-            # Prepare message for SNS
+            # Prepare message for SNS - No need to convert to Decimal for SNS
             message = {
                 'title': 'Image Analysis Complete',
                 'message': f"Your image '{filename}' has been analyzed. Found {face_count} faces and {len(labels)} objects.",
@@ -150,6 +165,9 @@ def handler(event, context):
 
         except Exception as e:
             print(f"Error processing file {record['s3']['object']['key']}: {e}")
+            # Print the full stack trace for better debugging
+            import traceback
+            traceback.print_exc()
 
     return {
         "statusCode": 200,

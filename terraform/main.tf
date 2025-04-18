@@ -56,13 +56,14 @@ module "ecs_iam" {
 }
 
 module "lambda_iam_role" {
-  source               = "./modules/iam/lambda_iam"
-  lambda_function_name = var.lambda_function_name
-  dynamodb_table_name  = var.image_metadata_dynamodb_table_name
-  s3_bucket            = module.media_storage.bucket_id
-  region               = var.aws_region
-  tags                 = var.tags
-  depends_on           = [module.media_storage]
+  source                             = "./modules/iam/lambda_iam"
+  lambda_function_name               = var.lambda_function_name
+  image_metadata_dynamodb_table_name = var.image_metadata_dynamodb_table_name
+  notification_dynamodb_table_name   = var.notifications_dynamodb_table_name
+  s3_bucket                          = module.media_storage.bucket_id
+  region                             = var.aws_region
+  tags                               = var.tags
+  depends_on                         = [module.media_storage]
 }
 
 module "lambda_s3_trigger" {

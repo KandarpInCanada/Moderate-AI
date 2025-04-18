@@ -46,14 +46,18 @@ resource "aws_iam_policy" "cloudwatch_logs" {
 #######################
 resource "aws_iam_policy" "rekognition_access" {
   name        = "${var.lambda_function_name}-rekognition-policy"
-  description = "Allow using Rekognition DetectLabels"
+  description = "Allow using all necessary Rekognition operations"
 
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Effect = "Allow",
       Action = [
-        "rekognition:DetectLabels"
+        "rekognition:DetectLabels",
+        "rekognition:DetectFaces",
+        "rekognition:DetectText",
+        "rekognition:RecognizeCelebrities",
+        "rekognition:DetectModerationLabels"
       ],
       Resource = "*"
     }]
@@ -72,9 +76,15 @@ resource "aws_iam_policy" "dynamodb_access" {
     Statement = [{
       Effect = "Allow",
       Action = [
-        "dynamodb:PutItem"
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Query"
       ],
-      Resource = "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/${var.dynamodb_table_name}"
+      Resource = [
+        "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/${var.image_metadata_dynamodb_table_name}",
+        "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/${var.notification_dynamodb_table_name}"
+      ]
     }]
   })
 }
@@ -91,9 +101,13 @@ resource "aws_iam_policy" "s3_access" {
         Action = [
           "s3:GetObject",
           "s3:GetObjectVersion",
-          "s3:GetBucketLocation"
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
         ],
-        Resource = "arn:aws:s3:::${var.s3_bucket}/*"
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket}",
+          "arn:aws:s3:::${var.s3_bucket}/*"
+        ]
       }
     ]
   })
@@ -114,6 +128,8 @@ resource "aws_iam_policy" "sns_access" {
         Action = [
           "sns:CreateTopic",
           "sns:ListTopics",
+          "sns:ListSubscriptionsByTopic",
+          "sns:Subscribe",
           "sns:Publish"
         ],
         Resource = "*"
@@ -121,7 +137,6 @@ resource "aws_iam_policy" "sns_access" {
     ]
   })
 }
-
 
 ########################
 # Attach All Policies
