@@ -42,6 +42,7 @@ export default function GalleryContainer({
   const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
     null
   );
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [filteredImages, setFilteredImages] = useState<ImageMetadata[]>([]);
 
   const { user, loading: authLoading, session } = useAuth();
@@ -131,6 +132,21 @@ export default function GalleryContainer({
     }
   }, [activeFilter, token, mutate]);
 
+  // Handle image selection and modal
+  const handleSelectImage = (image: ImageMetadata) => {
+    setSelectedImage(image);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    // Optional: Add a small delay before clearing the selected image
+    // This allows the exit animation to complete
+    setTimeout(() => {
+      setSelectedImage(null);
+    }, 300);
+  };
+
   // If still loading or not authenticated, show nothing
   if (authLoading || !user) {
     return null;
@@ -138,51 +154,49 @@ export default function GalleryContainer({
 
   return (
     <>
-      {selectedImage ? (
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
+          <p className="text-red-700 dark:text-red-400">{error.message}</p>
+          <button
+            onClick={() => mutate()}
+            className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Gallery Grid with Suspense for better loading */}
+      <Suspense
+        fallback={
+          <div className="min-h-[400px] flex items-center justify-center">
+            <div className="flex flex-col items-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+              <p className="text-muted-foreground">Loading your images...</p>
+            </div>
+          </div>
+        }
+      >
+        <GalleryGrid
+          activeFilter={activeFilter}
+          searchQuery={searchQuery}
+          sortBy={sortBy}
+          images={
+            filteredImages.length > 0 ? filteredImages : data?.images || []
+          }
+          loading={isLoading}
+          onSelectImage={handleSelectImage}
+        />
+      </Suspense>
+
+      {/* Image Detail Modal */}
+      {selectedImage && (
         <ImageDetailView
           image={selectedImage}
-          onBack={() => setSelectedImage(null)}
+          onClose={handleCloseModal}
+          isOpen={isModalOpen}
         />
-      ) : (
-        <>
-          {/* Error message */}
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 mb-6">
-              <p className="text-red-700 dark:text-red-400">{error.message}</p>
-              <button
-                onClick={() => mutate()}
-                className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-              >
-                Try again
-              </button>
-            </div>
-          )}
-
-          {/* Gallery Grid with Suspense for better loading */}
-          <Suspense
-            fallback={
-              <div className="min-h-[400px] flex items-center justify-center">
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-muted-foreground">
-                    Loading your images...
-                  </p>
-                </div>
-              </div>
-            }
-          >
-            <GalleryGrid
-              activeFilter={activeFilter}
-              searchQuery={searchQuery}
-              sortBy={sortBy}
-              images={
-                filteredImages.length > 0 ? filteredImages : data?.images || []
-              }
-              loading={isLoading}
-              onSelectImage={setSelectedImage}
-            />
-          </Suspense>
-        </>
       )}
     </>
   );

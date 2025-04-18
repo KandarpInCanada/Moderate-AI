@@ -263,14 +263,14 @@ export default function SmartCollections() {
             className="flex flex-col items-center group"
           >
             <div className="relative mb-3">
-              {/* Circular image container with optimized transitions */}
-              <div className="w-40 h-40 rounded-full overflow-hidden border-2 border-transparent group-hover:border-primary hover-transition shadow-md group-hover:shadow-lg">
+              {/* Square image container with optimized transitions */}
+              <div className="w-40 h-40 rounded-lg overflow-hidden border-2 border-transparent group-hover:border-primary hover-transition shadow-md group-hover:shadow-lg">
                 {collection.coverImage ? (
                   <>
                     {/* Show skeleton loader while image is loading */}
                     {(imageLoading[collection.id] === undefined ||
                       imageLoading[collection.id]) && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse rounded-full">
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse rounded-lg">
                         <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
                       </div>
                     )}
@@ -294,7 +294,7 @@ export default function SmartCollections() {
                     />
                   </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                  <div className="w-full h-full flex items-center justify-center bg-muted rounded-lg">
                     <ImageIcon className="h-12 w-12 text-muted-foreground" />
                   </div>
                 )}
@@ -307,16 +307,16 @@ export default function SmartCollections() {
                 </div>
               </div>
 
-              {/* Collection type badge - position adjusted for circular container */}
+              {/* Collection type badge - position adjusted for square containers */}
               <div
                 className={`
-                absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-white font-medium text-sm flex items-center
-                ${collection.type === "people" ? "bg-indigo-500" : ""}
-                ${collection.type === "location" ? "bg-green-500" : ""}
-                ${collection.type === "object" ? "bg-purple-500" : ""}
-                ${collection.type === "date" ? "bg-blue-500" : ""}
-                ${collection.type === "custom" ? "bg-primary" : ""}
-              `}
+  absolute bottom-2 left-2 rounded-md px-3 py-1 text-white font-medium text-sm flex items-center
+  ${collection.type === "people" ? "bg-indigo-500" : ""}
+  ${collection.type === "location" ? "bg-green-500" : ""}
+  ${collection.type === "object" ? "bg-purple-500" : ""}
+  ${collection.type === "date" ? "bg-blue-500" : ""}
+  ${collection.type === "custom" ? "bg-primary" : ""}
+`}
               >
                 {collection.icon}
                 <span className="ml-1">{collection.name}</span>
