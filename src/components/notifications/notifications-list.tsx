@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useState } from "react";
 import {
   CheckCircle,
@@ -45,11 +47,15 @@ export default function NotificationsList() {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "success":
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return (
+          <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400" />
+        );
       case "error":
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        return (
+          <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
+        );
       default:
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return <Info className="h-5 w-5 text-blue-500 dark:text-blue-400" />;
     }
   };
 
@@ -83,6 +89,19 @@ export default function NotificationsList() {
     }
   };
 
+  const handleDeleteNotification = async (
+    receiptHandle: string,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    try {
+      await deleteNotification(receiptHandle);
+    } catch (err: any) {
+      console.error("Failed to delete notification:", err);
+    }
+  };
+
   if (loading || isPolling) {
     return (
       <div className="p-4 text-center">
@@ -97,8 +116,8 @@ export default function NotificationsList() {
   if (error) {
     return (
       <div className="p-4 text-center">
-        <AlertCircle className="h-6 w-6 text-red-500 mx-auto mb-2" />
-        <p className="text-sm text-red-500">{error}</p>
+        <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400 mx-auto mb-2" />
+        <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
         <button
           onClick={handleRefresh}
           className="mt-2 text-xs text-primary hover:underline"
@@ -109,7 +128,7 @@ export default function NotificationsList() {
     );
   }
 
-  if (notifications.length === 0) {
+  if (!notifications || notifications.length === 0) {
     return (
       <div className="p-6 text-center">
         <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -133,25 +152,25 @@ export default function NotificationsList() {
             className="p-4 border-b border-border hover:bg-muted/50"
           >
             <div className="flex">
-              <div className="mr-3 mt-0.5">
+              <div className="mr-3 mt-0.5 flex-shrink-0">
                 {getNotificationIcon(notification.type)}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-medium text-foreground">
+                  <h4 className="text-sm font-medium text-foreground truncate pr-2">
                     {notification.title}
                   </h4>
                   <button
-                    onClick={() =>
-                      deleteNotification(notification.receiptHandle)
+                    onClick={(e) =>
+                      handleDeleteNotification(notification.receiptHandle, e)
                     }
-                    className="text-muted-foreground hover:text-foreground ml-2"
+                    className="text-muted-foreground hover:text-foreground ml-2 flex-shrink-0"
                     title="Delete notification"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 break-words">
                   {notification.message}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -170,6 +189,10 @@ export default function NotificationsList() {
                         src={notification.imageUrl || "/placeholder.svg"}
                         alt="Notification image"
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            "/placeholder.svg?height=80&width=300&text=Image+unavailable";
+                        }}
                       />
                     </a>
                   </div>

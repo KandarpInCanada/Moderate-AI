@@ -12,7 +12,8 @@ import {
   Info,
 } from "lucide-react";
 import type { ImageMetadata } from "@/types/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { refreshImageUrl } from "@/lib/s3-client";
 
 interface ImageDetailViewProps {
   image: ImageMetadata;
@@ -26,6 +27,12 @@ export default function ImageDetailView({
   const [activeTab, setActiveTab] = useState<"info" | "labels" | "text">(
     "info"
   );
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    // Reset image error state when image changes
+    setImageError(false);
+  }, [image]);
 
   const formatDate = (dateString: string | Date) => {
     // Use a fixed format that will be consistent between server and client
@@ -66,6 +73,14 @@ export default function ImageDetailView({
     );
   };
 
+  // Generate a placeholder image URL with the filename
+  const getPlaceholderUrl = () => {
+    const filename = image.filename || "image";
+    return `/placeholder.svg?height=800&width=800&text=${encodeURIComponent(
+      filename
+    )}`;
+  };
+
   return (
     <div className="animate-fade-in">
       {/* Back button */}
@@ -91,15 +106,64 @@ export default function ImageDetailView({
           {/* Image section - fixed size container */}
           <div className="lg:w-3/5 bg-muted flex items-center justify-center p-0 h-[500px] overflow-hidden">
             <div className="w-full h-full flex items-center justify-center">
-              <img
-                src={image.url || "/placeholder.svg"}
-                alt={image.filename}
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  // If image fails to load, use a generic placeholder
-                  e.currentTarget.src = `/placeholder.svg?height=800&width=800&query=Image+not+available`;
-                }}
-              />
+              {!imageError ? (
+                <img
+                  src={image.url || getPlaceholderUrl()}
+                  alt={image.filename}
+                  className="max-w-full max-h-full object-contain"
+                  onError={async (e) => {
+                    // Try to refresh the URL if it's a 403 error (likely expired pre-signed URL)
+                    if (image.key && image.url) {
+                      try {
+                        // Only attempt to refresh if we have the necessary data
+                        const refreshedUrl = await refreshImageUrl(image.key);
+                        // Update the image in place with the new URL
+                        image.url = refreshedUrl;
+                        // Retry loading with the new URL
+                        e.currentTarget.src = refreshedUrl;
+                        return;
+                      } catch (refreshError) {
+                        console.error(
+                          "Failed to refresh image URL:",
+                          refreshError
+                        );
+                      }
+                    }
+
+                    // If refresh fails or isn't possible, mark as error
+                    setImageError(true);
+                  }}
+                  crossOrigin="anonymous"
+                />
+              ) : (
+                <div className="text-center p-6">
+                  <div className="h-16 w-16 bg-muted-foreground/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Tag className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground font-medium">
+                    {image.filename}
+                  </p>
+                  <p className="text-sm text-muted-foreground/70 mt-2">
+                    Access denied or image expired
+                  </p>
+                  <button
+                    onClick={async () => {
+                      if (image.key) {
+                        try {
+                          const refreshedUrl = await refreshImageUrl(image.key);
+                          image.url = refreshedUrl;
+                          setImageError(false);
+                        } catch (error) {
+                          console.error("Failed to refresh image:", error);
+                        }
+                      }
+                    }}
+                    className="mt-4 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -240,7 +304,8 @@ export default function ImageDetailView({
                 </h3>
 
                 {/* Labels with confidence */}
-                {image.rekognitionDetails.labels.length > 0 ? (
+                {image.rekognitionDetails.labels &&
+                image.rekognitionDetails.labels.length > 0 ? (
                   <div className="bg-muted/50 rounded-lg p-4">
                     <div className="grid grid-cols-1 gap-3">
                       {image.rekognitionDetails.labels.map((label, index) => (
@@ -250,7 +315,7 @@ export default function ImageDetailView({
                         >
                           <div className="flex items-center">
                             <Tag className="h-4 w-4 text-primary mr-2" />
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium text-foreground">
                               {label.name}
                             </span>
                           </div>
@@ -261,7 +326,7 @@ export default function ImageDetailView({
                                 style={{ width: `${label.confidence}%` }}
                               ></div>
                             </div>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-xs text-foreground">
                               {label.confidence.toFixed(1)}%
                             </span>
                           </div>
@@ -325,7 +390,7 @@ export default function ImageDetailView({
                               <span className="text-sm text-foreground">
                                 {celebrity.name}
                               </span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-foreground">
                                 {celebrity.confidence.toFixed(1)}% confidence
                               </span>
                             </div>

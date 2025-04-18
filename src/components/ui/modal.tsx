@@ -2,8 +2,9 @@
 
 import type React from "react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,12 +47,34 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     };
   }, [isOpen, onClose]);
 
-  if (!isMounted) return null;
+  // Handle click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (overlayRef.current && e.target === overlayRef.current) {
+        onClose();
+      }
+    };
 
+    if (isOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isOpen, onClose]);
+
+  if (!isMounted) return null;
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+  // Use createPortal to render the modal at the document body level
+  return createPortal(
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      aria-modal="true"
+      role="dialog"
+    >
       <div
         className="bg-card rounded-lg shadow-lg border border-border w-full max-w-md mx-4 animate-in fade-in zoom-in duration-200"
         onClick={(e) => e.stopPropagation()}
@@ -60,12 +84,14 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground rounded-full p-1 hover:bg-muted transition-colors"
+            aria-label="Close modal"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="max-h-[80vh] overflow-y-auto">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

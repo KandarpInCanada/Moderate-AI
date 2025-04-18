@@ -18,9 +18,10 @@ interface GalleryFiltersProps {
   onSearchChange: (query: string) => void;
   sortBy: "newest" | "oldest" | "name";
   onSortChange: (sort: "newest" | "oldest" | "name") => void;
-  labelCategories: string[];
-  activeLabel: string | null;
-  onLabelChange: (label: string | null) => void;
+  // Make label-related props optional
+  labelCategories?: string[];
+  activeLabel?: string | null;
+  onLabelChange?: (label: string | null) => void;
 }
 
 export default function GalleryFilters({
@@ -30,9 +31,6 @@ export default function GalleryFilters({
   onSearchChange,
   sortBy,
   onSortChange,
-  labelCategories,
-  activeLabel,
-  onLabelChange,
 }: GalleryFiltersProps) {
   return (
     <div className="bg-card rounded-xl shadow-sm border border-border p-5 mb-6 transition-all hover:shadow-md">
@@ -126,41 +124,6 @@ export default function GalleryFilters({
           </select>
         </div>
       </div>
-
-      {/* Label categories */}
-      {labelCategories.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-border">
-          <div className="flex items-center mb-2">
-            <Tag className="h-4 w-4 text-muted-foreground mr-2" />
-            <span className="text-sm font-medium text-muted-foreground">
-              Filter by Label:
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {activeLabel && (
-              <button
-                onClick={() => onLabelChange(null)}
-                className="px-2 py-1 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-muted/80"
-              >
-                Clear Filter
-              </button>
-            )}
-            {labelCategories.map((label) => (
-              <button
-                key={label}
-                onClick={() => onLabelChange(label)}
-                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-                  activeLabel === label
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted/50 text-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -156,8 +156,11 @@ export default function NotificationSettings() {
                   processed
                 </p>
                 {queueUrl && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Queue URL: <span className="font-mono">{queueUrl}</span>
+                  <p className="text-xs text-foreground mt-2">
+                    Queue URL:{" "}
+                    <span className="font-mono text-muted-foreground">
+                      {queueUrl}
+                    </span>
                   </p>
                 )}
               </div>
@@ -225,7 +228,7 @@ export default function NotificationSettings() {
           <h4 className="text-sm font-medium text-blue-800 dark:text-blue-400 mb-2">
             About AWS SQS Notifications
           </h4>
-          <p className="text-sm text-blue-700 dark:text-blue-500">
+          <p className="text-sm text-blue-900 dark:text-blue-300">
             When you upload images to PhotoSense, they are automatically
             analyzed by AWS Rekognition to detect objects, faces, text, and
             more. With AWS SQS integration, you'll receive notifications when

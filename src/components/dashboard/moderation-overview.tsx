@@ -350,7 +350,10 @@ export default function ModerationOverview() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {recentActivity.map((item) => (
-                    <tr key={item.id} className="hover:bg-muted/50">
+                    <tr
+                      key={item.id || `activity-${item.filename}`}
+                      className="hover:bg-muted/50"
+                    >
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0 bg-muted rounded-md flex items-center justify-center">
@@ -374,7 +377,7 @@ export default function ModerationOverview() {
                             .slice(0, 3)
                             .map((label: string, index: number) => (
                               <span
-                                key={index}
+                                key={`${item.id}-label-${index}`}
                                 className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
                               >
                                 {label}

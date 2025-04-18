@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState, useEffect } from "react";
 import {
   Tag,
@@ -9,9 +11,11 @@ import {
   Download,
   MoreHorizontal,
   Text,
+  ImageIcon,
 } from "lucide-react";
 import type { ModerationStatus } from "./gallery-container";
 import type { ImageMetadata } from "@/types/image";
+import { refreshImageUrl } from "@/lib/s3-client";
 
 interface GalleryGridProps {
   activeFilter: ModerationStatus;
@@ -20,7 +24,7 @@ interface GalleryGridProps {
   images: ImageMetadata[];
   loading: boolean;
   onSelectImage: (image: ImageMetadata) => void;
-  activeLabel: string | null;
+  activeLabel?: string | null;
 }
 
 export default function GalleryGrid({
@@ -34,11 +38,24 @@ export default function GalleryGrid({
 }: GalleryGridProps) {
   const [showDropdownId, setShowDropdownId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   // Use useEffect to indicate when component is mounted on client
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showDropdownId) {
+        setShowDropdownId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdownId]);
 
   // Only filter and sort images on the client side
   const filteredImages = isClient
@@ -63,7 +80,7 @@ export default function GalleryGrid({
             image.rekognitionDetails.text.length > 0;
         }
 
-        // Filter by active label if selected
+        // Filter by active label if selected and the prop is provided
         if (activeLabel) {
           matchesFilter = matchesFilter && image.labels.includes(activeLabel);
         }
@@ -103,35 +120,44 @@ export default function GalleryGrid({
       })
     : [];
 
-  const toggleDropdown = (id: string) => {
+  const toggleDropdown = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setShowDropdownId(showDropdownId === id ? null : id);
   };
 
   const formatDate = (dateString: string | Date) => {
-    // Use a fixed format that will be consistent between server and client
-    const date = new Date(dateString);
-    const month = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ][date.getMonth()];
-    return `${month} ${date.getDate()}, ${date.getFullYear()}`;
+    try {
+      // Use a fixed format that will be consistent between server and client
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return "Unknown date";
+      }
+      const month = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ][date.getMonth()];
+      return `${month} ${date.getDate()}, ${date.getFullYear()}`;
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return "Invalid date";
+    }
   };
 
   const getStatusIcon = (image: ImageMetadata) => {
     if (image.faces > 0) {
       return <Users className="h-4 w-4" />;
     } else if (
-      image.rekognitionDetails.text &&
+      image.rekognitionDetails?.text &&
       image.rekognitionDetails.text.length > 0
     ) {
       return <Text className="h-4 w-4" />;
@@ -146,7 +172,7 @@ export default function GalleryGrid({
     if (image.faces > 0) {
       return "bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white border-indigo-700 dark:border-indigo-600";
     } else if (
-      image.rekognitionDetails.text &&
+      image.rekognitionDetails?.text &&
       image.rekognitionDetails.text.length > 0
     ) {
       return "bg-blue-600 text-white dark:bg-blue-500 dark:text-white border-blue-700 dark:border-blue-600";
@@ -161,19 +187,22 @@ export default function GalleryGrid({
     if (image.faces > 0) {
       return `${image.faces} ${image.faces === 1 ? "Person" : "People"}`;
     } else if (
-      image.rekognitionDetails.text &&
+      image.rekognitionDetails?.text &&
       image.rekognitionDetails.text.length > 0
     ) {
       return "Text";
     } else if (image.location) {
       return image.location;
     } else {
-      return image.labels[0] || "Image";
+      return image.labels && image.labels.length > 0
+        ? image.labels[0]
+        : "Image";
     }
   };
 
   // Format file size
   const formatFileSize = (bytes: number) => {
+    if (!bytes || isNaN(bytes)) return "Unknown size";
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
@@ -181,6 +210,19 @@ export default function GalleryGrid({
     return (
       Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
     );
+  };
+
+  const handleImageError = (imageId: string) => {
+    console.error(`Failed to load image: ${imageId}`);
+    setImageErrors((prev) => ({ ...prev, [imageId]: true }));
+  };
+
+  // Generate a placeholder image URL with the filename
+  const getPlaceholderUrl = (image: ImageMetadata) => {
+    const filename = image.filename || "image";
+    return `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(
+      filename
+    )}`;
   };
 
   // Don't render anything until client-side hydration is complete
@@ -227,11 +269,7 @@ export default function GalleryGrid({
           </h3>
           <p className="text-muted-foreground max-w-md mx-auto">
             {activeFilter !== "all"
-              ? `No photos with ${getFilterDescription()} found${
-                  activeLabel ? ` with label "${activeLabel}"` : ""
-                }. Try changing your filter or uploading new images.`
-              : activeLabel
-              ? `No photos with label "${activeLabel}" found. Try a different label or upload new images.`
+              ? `No photos with ${getFilterDescription()} found. Try changing your filter or uploading new images.`
               : searchQuery
               ? "No photos match your search. Try a different search term."
               : "You haven't uploaded any photos yet. Upload some photos to see them here."}
@@ -241,19 +279,64 @@ export default function GalleryGrid({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {sortedImages.map((image) => (
             <div
-              key={image.id}
+              key={image.id || `image-${image.filename}-${image.lastModified}`}
               className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all"
             >
               <div className="relative aspect-square group">
-                <img
-                  src={image.url || "/placeholder.svg"}
-                  alt={image.filename}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
-                  onError={(e) => {
-                    // If image fails to load, use a generic placeholder
-                    e.currentTarget.src = `/placeholder.svg?height=400&width=400&query=Image`;
-                  }}
-                />
+                {/* Image container with fallback */}
+                <div
+                  className="absolute inset-0 bg-muted flex items-center justify-center"
+                  onClick={() => onSelectImage(image)}
+                >
+                  {!imageErrors[image.id] ? (
+                    <img
+                      src={image.url || getPlaceholderUrl(image)}
+                      alt={image.filename}
+                      className="w-full h-full object-cover"
+                      onError={async (e) => {
+                        console.error(`Failed to load image: ${image.id}`);
+
+                        // Try to refresh the URL if it's a 403 error (likely expired pre-signed URL)
+                        if (image.key && image.url) {
+                          try {
+                            // Only attempt to refresh if we have the necessary data
+                            const refreshedUrl = await refreshImageUrl(
+                              image.key
+                            );
+                            // Update the image in place with the new URL
+                            image.url = refreshedUrl;
+                            // Retry loading with the new URL
+                            e.currentTarget.src = refreshedUrl;
+                            return;
+                          } catch (refreshError) {
+                            console.error(
+                              "Failed to refresh image URL:",
+                              refreshError
+                            );
+                          }
+                        }
+
+                        // If refresh fails or isn't possible, mark as error
+                        setImageErrors((prev) => ({
+                          ...prev,
+                          [image.id]: true,
+                        }));
+                      }}
+                      crossOrigin="anonymous"
+                    />
+                  ) : (
+                    <div className="text-center p-4">
+                      <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {image.filename || "Image unavailable"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Access denied or image expired
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                   <button
                     onClick={() => onSelectImage(image)}
@@ -288,11 +371,11 @@ export default function GalleryGrid({
                     className="font-medium text-foreground truncate"
                     title={image.filename}
                   >
-                    {image.filename}
+                    {image.filename || `Image ${image.id.substring(0, 8)}`}
                   </h3>
                   <div className="relative">
                     <button
-                      onClick={() => toggleDropdown(image.id)}
+                      onClick={(e) => toggleDropdown(image.id, e)}
                       className="p-1 rounded-full hover:bg-muted text-muted-foreground"
                     >
                       <MoreHorizontal className="h-5 w-5" />
@@ -310,6 +393,8 @@ export default function GalleryGrid({
                           <a
                             href={image.url}
                             download={image.filename}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted"
                           >
                             <Download className="h-4 w-4 mr-2" />
@@ -321,14 +406,16 @@ export default function GalleryGrid({
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatDate(image.lastModified)}
+                  {image.lastModified
+                    ? formatDate(image.lastModified)
+                    : "Unknown date"}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {image.labels.length > 0 ? (
+                  {image.labels && image.labels.length > 0 ? (
                     <>
                       {image.labels.slice(0, 3).map((label, index) => (
                         <span
-                          key={index}
+                          key={`${image.id}-label-${index}`}
                           className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary"
                         >
                           {label}
@@ -342,7 +429,7 @@ export default function GalleryGrid({
                     </>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      {formatFileSize(image.size)}
+                      {image.size ? formatFileSize(image.size) : "Unknown size"}
                     </span>
                   )}
                 </div>

@@ -30,8 +30,11 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const [mounted, setMounted] = useState(false);
 
+  // Only access localStorage after component is mounted
   useEffect(() => {
+    setMounted(true);
     const savedTheme = localStorage.getItem(storageKey) as Theme | null;
     if (savedTheme) {
       setTheme(savedTheme);
@@ -39,8 +42,9 @@ export function ThemeProvider({
   }, [storageKey]);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    if (!mounted) return;
 
+    const root = window.document.documentElement;
     root.classList.remove("light", "dark");
 
     if (theme === "system") {
@@ -49,11 +53,27 @@ export function ThemeProvider({
         ? "dark"
         : "light";
       root.classList.add(systemTheme);
-      return;
+    } else {
+      root.classList.add(theme);
     }
+  }, [theme, mounted]);
 
-    root.classList.add(theme);
-  }, [theme]);
+  // Listen for system theme changes
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => {
+        const root = window.document.documentElement;
+        root.classList.remove("light", "dark");
+        root.classList.add(mediaQuery.matches ? "dark" : "light");
+      };
+
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [theme, mounted]);
 
   const value = {
     theme,
@@ -63,6 +83,7 @@ export function ThemeProvider({
     },
   };
 
+  // Prevent theme flash by rendering children only after mounted
   return (
     <ThemeProviderContext.Provider {...props} value={value}>
       {children}

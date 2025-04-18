@@ -133,6 +133,7 @@ export async function listUserImages(userIdentifier: string) {
 
   // Create the prefix for the user's folder
   const prefix = `users/${sanitizedUserIdentifier}/`
+  console.log(`Listing S3 objects with prefix: ${prefix}`)
 
   try {
     const command = new ListObjectsV2Command({
@@ -141,6 +142,7 @@ export async function listUserImages(userIdentifier: string) {
     })
 
     const response = await s3Client.send(command)
+    console.log(`S3 ListObjectsV2 response: Found ${response.Contents?.length || 0} objects`)
 
     if (!response.Contents || response.Contents.length === 0) {
       return []
@@ -151,44 +153,60 @@ export async function listUserImages(userIdentifier: string) {
       response.Contents.map(async (object) => {
         if (!object.Key) return null
 
-        // Generate a pre-signed URL for the image that expires in 1 hour
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
-          Key: object.Key,
-        })
+        try {
+          // Generate a pre-signed URL for the image that expires in 1 hour
+          const getObjectCommand = new GetObjectCommand({
+            Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
+            Key: object.Key,
+          })
 
-        const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 3600 })
+          const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 86400 }) // Increase to 24 hours instead of 1 hour
+          console.log(`Generated pre-signed URL for ${object.Key}: ${url.substring(0, 100)}...`)
 
-        // Extract filename from the key
-        const filename = object.Key.split("/").pop() || "unknown"
+          // Extract filename from the key
+          const filename = object.Key.split("/").pop() || "unknown"
 
-        // Create image metadata
-        return {
-          id: object.Key,
-          key: object.Key,
-          filename,
-          url,
-          size: object.Size || 0,
-          lastModified: object.LastModified || new Date(),
-          // Default values for properties that would normally come from Rekognition
-          labels: [],
-          faces: 0,
-          location: "",
-          rekognitionDetails: {
+          // Create image metadata
+          return {
+            id: object.Key,
+            key: object.Key,
+            filename,
+            url,
+            size: object.Size || 0,
+            lastModified: object.LastModified || new Date(),
+            // Default values for properties that would normally come from Rekognition
             labels: [],
             faces: 0,
-            celebrities: [],
-            text: [],
-            analyzedAt: new Date().toISOString(),
-          },
+            location: "",
+            rekognitionDetails: {
+              labels: [],
+              faces: 0,
+              celebrities: [],
+              text: [],
+              analyzedAt: new Date().toISOString(),
+            },
+          }
+        } catch (error) {
+          console.error(`Error processing S3 object ${object.Key}:`, error)
+          return null
         }
       }),
     )
 
     // Filter out any null values and return
-    return images.filter(Boolean)
+    const validImages = images.filter(Boolean)
+    console.log(`Processed ${validImages.length} valid images from S3`)
+
+    // Log a sample image for debugging
+    if (validImages.length > 0) {
+      const sampleImage = { ...validImages[0] }
+      if (sampleImage.url) sampleImage.url = sampleImage.url.substring(0, 100) + "..." // Truncate URL for logging
+      console.log("Sample processed S3 image:", JSON.stringify(sampleImage, null, 2))
+    }
+
+    return validImages
   } catch (error) {
-    console.error("Error listing user images:", error)
+    console.error("Error listing user images from S3:", error)
     throw error
   }
 }
@@ -214,4 +232,20 @@ export async function uploadToS3(file: File, onProgress?: (progress: number) => 
       }
     }, 300)
   })
+}
+
+// Also add a function to refresh pre-signed URLs when they expire
+export async function refreshImageUrl(imageKey: string): Promise<string> {
+  try {
+    const getObjectCommand = new GetObjectCommand({
+      Bucket: process.env.NEXT_PUBLIC_AWS_BUCKET_NAME || "",
+      Key: imageKey,
+    })
+
+    const url = await getSignedUrl(s3Client, getObjectCommand, { expiresIn: 86400 }) // 24 hours
+    return url
+  } catch (error) {
+    console.error(`Error refreshing URL for ${imageKey}:`, error)
+    throw error
+  }
 }

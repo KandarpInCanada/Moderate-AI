@@ -27,8 +27,6 @@ export default function GalleryContainer() {
   const [selectedImage, setSelectedImage] = useState<ImageMetadata | null>(
     null
   );
-  const [labelCategories, setLabelCategories] = useState<string[]>([]);
-  const [activeLabel, setActiveLabel] = useState<string | null>(null);
 
   const { user, loading: authLoading, session } = useAuth();
   const router = useRouter();
@@ -86,17 +84,6 @@ export default function GalleryContainer() {
         }));
 
         setImages(processedImages);
-
-        // Extract unique label categories
-        const allLabels = new Set<string>();
-        processedImages.forEach((img: ImageMetadata) => {
-          if (img.labels && img.labels.length) {
-            img.labels.forEach((label) => allLabels.add(label));
-          }
-        });
-
-        // Sort labels alphabetically
-        setLabelCategories(Array.from(allLabels).sort());
       } catch (err: any) {
         console.error("Error fetching images:", err);
         setError(err.message || "Failed to load images");
@@ -145,9 +132,6 @@ export default function GalleryContainer() {
                   onSearchChange={setSearchQuery}
                   sortBy={sortBy}
                   onSortChange={setSortBy}
-                  labelCategories={labelCategories}
-                  activeLabel={activeLabel}
-                  onLabelChange={setActiveLabel}
                 />
 
                 {/* Error message */}
@@ -171,7 +155,6 @@ export default function GalleryContainer() {
                   images={images}
                   loading={loading}
                   onSelectImage={setSelectedImage}
-                  activeLabel={activeLabel}
                 />
               </>
             )}
