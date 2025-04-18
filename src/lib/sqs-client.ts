@@ -88,7 +88,8 @@ export const receiveMessagesFromQueue = async (userIdentifier: string, maxMessag
     const command = new ReceiveMessageCommand({
       QueueUrl: queueUrl,
       MaxNumberOfMessages: Math.min(maxMessages, 10), // SQS allows max 10 messages at once
-      WaitTimeSeconds: 5, // Long polling to reduce costs
+      WaitTimeSeconds: 2, // Long polling to reduce costs, but don't wait too long
+      VisibilityTimeout: 30, // Hide message for 30 seconds while processing
       MessageAttributeNames: ["All"],
       AttributeNames: ["All"],
     })
@@ -107,6 +108,12 @@ export const receiveMessagesFromQueue = async (userIdentifier: string, maxMessag
         requestId: error.$metadata.requestId,
         httpStatusCode: error.$metadata.httpStatusCode,
       })
+    }
+
+    // If the queue doesn't exist, return an empty array instead of throwing
+    if (error.name === "QueueDoesNotExist") {
+      console.log("Queue does not exist, returning empty array")
+      return []
     }
 
     throw new Error(`Failed to receive messages from SQS: ${error.message || "Unknown error"}`)

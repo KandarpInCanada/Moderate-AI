@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-client"
-import { receiveMessagesFromQueue, deleteMessageFromQueue } from "@/lib/sqs-client"
+import { receiveMessagesFromQueue, deleteMessageFromQueue, getUserQueueUrl } from "@/lib/sqs-client"
 
 export async function GET(request: Request) {
   try {
@@ -29,8 +29,11 @@ export async function GET(request: Request) {
     const userIdentifier = user.email || user.id
 
     try {
+      console.log(`Fetching notifications for user: ${userIdentifier}`)
+
       // Poll for messages from SQS
       const messages = await receiveMessagesFromQueue(userIdentifier, 10)
+      console.log(`Received ${messages.length} messages from SQS`)
 
       // Process messages into a more usable format
       const notifications = messages.map((message) => {
@@ -59,10 +62,16 @@ export async function GET(request: Request) {
         }
       })
 
-      return NextResponse.json({ notifications })
+      return NextResponse.json({
+        notifications,
+        queueUrl: getUserQueueUrl(userIdentifier),
+      })
     } catch (error: any) {
       console.error("Error fetching notifications:", error)
-      return NextResponse.json({ notifications: [] })
+      return NextResponse.json({
+        error: error.message || "Failed to fetch notifications",
+        notifications: [],
+      })
     }
   } catch (error: any) {
     console.error("Error handling notifications request:", error)

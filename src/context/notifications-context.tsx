@@ -20,6 +20,8 @@ type NotificationsContextType = {
   isPolling: boolean;
   pollingError: string | null;
   pollingSuccess: boolean;
+  notifications: any[];
+  setNotifications: (notifications: any[]) => void;
 };
 
 const NotificationsContext = createContext<NotificationsContextType>({
@@ -30,6 +32,8 @@ const NotificationsContext = createContext<NotificationsContextType>({
   isPolling: false,
   pollingError: null,
   pollingSuccess: false,
+  notifications: [],
+  setNotifications: () => {},
 });
 
 export const NotificationsProvider = ({
@@ -42,6 +46,8 @@ export const NotificationsProvider = ({
   const [isPolling, setIsPolling] = useState<boolean>(false);
   const [pollingError, setPollingError] = useState<string | null>(null);
   const [pollingSuccess, setPollingSuccess] = useState<boolean>(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [lastPolled, setLastPolled] = useState<number>(0);
   const { user, session } = useAuth();
 
   // Load enabled state from localStorage on mount
@@ -72,9 +78,33 @@ export const NotificationsProvider = ({
     }
   }, [enabled, user]);
 
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user || !session?.access_token) return [];
+
+    try {
+      const response = await fetch("/api/notifications", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch notifications");
+      }
+
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+      return data.notifications || [];
+    } catch (err: any) {
+      console.error("Error fetching notifications:", err);
+      return [];
+    }
+  }, [user, session]);
+
   // Poll for messages from SQS queue
   const pollForMessages = useCallback(async () => {
-    if (!user || !session?.access_token) return;
+    if (!user || !session?.access_token || !enabled) return;
 
     setIsPolling(true);
     setPollingError(null);
@@ -116,13 +146,33 @@ export const NotificationsProvider = ({
       }
 
       setPollingSuccess(true);
+      setLastPolled(Date.now());
+
+      // Fetch notifications after successful polling
+      await fetchNotifications();
     } catch (error: any) {
       console.error("Error polling SQS:", error);
       setPollingError(error.message || "Failed to poll for notifications");
     } finally {
       setIsPolling(false);
     }
-  }, [user, session]);
+  }, [user, session, enabled, fetchNotifications]);
+
+  // Auto-poll for messages every 30 seconds if enabled
+  useEffect(() => {
+    if (!enabled || !user) return;
+
+    // Initial poll when component mounts
+    if (lastPolled === 0) {
+      pollForMessages();
+    }
+
+    const interval = setInterval(() => {
+      pollForMessages();
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [enabled, user, pollForMessages, lastPolled]);
 
   return (
     <NotificationsContext.Provider
@@ -134,6 +184,8 @@ export const NotificationsProvider = ({
         isPolling,
         pollingError,
         pollingSuccess,
+        notifications,
+        setNotifications,
       }}
     >
       {children}
