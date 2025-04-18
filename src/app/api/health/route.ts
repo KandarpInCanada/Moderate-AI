@@ -5,7 +5,6 @@ import { DescribeTableCommand } from "@aws-sdk/client-dynamodb"
 
 export async function GET() {
   try {
-    // Basic health check information
     const healthData = {
       status: "healthy",
       timestamp: new Date().toISOString(),
