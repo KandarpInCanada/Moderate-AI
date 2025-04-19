@@ -181,3 +181,14 @@ variable "lambda_environment_vars" {
   description = "Environment variables for the Lambda"
   type        = map(string)
 }
+
+variable "supabase_access_token" {
+  description = "Supabase personal access token."
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_project_id" {
+  description = "Supabase project ID."
+  type        = string
+}

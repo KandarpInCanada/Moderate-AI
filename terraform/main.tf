@@ -102,3 +102,16 @@ module "ecs" {
   ecs_execution_role_arn = module.ecs_iam.execution_role_arn
   ecs_task_role_arn      = module.ecs_iam.task_role_arn
 }
+
+module "supabase_auth_settings" {
+  source                = "./modules/supabase_auth_settings"
+  supabase_access_token = var.supabase_access_token
+  project_id            = var.supabase_project_id
+  site_url              = "https://${module.ecs.load_balancer_dns_name}/auth/callback"
+  additional_redirect_urls = [
+    "https://${module.ecs.load_balancer_dns_name}",
+    "https://${module.ecs.load_balancer_dns_name}/auth/callback"
+  ]
+}
+
+
