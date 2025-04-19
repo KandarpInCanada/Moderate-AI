@@ -10,25 +10,24 @@ export default function NotificationBell() {
   const {
     enabled,
     notifications,
-    fetchNotifications,
+    pollForMessages,
     hasUnreadNotifications,
     setHasUnreadNotifications,
   } = useNotifications();
 
-  // Fetch notifications periodically
+  // Poll for notifications when component mounts
   useEffect(() => {
     if (enabled) {
-      // Initial fetch
-      fetchNotifications();
+      pollForMessages();
 
-      // Set up periodic fetch (less frequent than polling)
+      // Set up polling interval
       const interval = setInterval(() => {
-        fetchNotifications();
-      }, 300000); // Check every 5 minutes instead of every minute
+        pollForMessages();
+      }, 60000); // Poll every minute
 
       return () => clearInterval(interval);
     }
-  }, [enabled, fetchNotifications]);
+  }, [enabled, pollForMessages]);
 
   const handleOpenNotifications = () => {
     // Mark notifications as read when opening the notifications page

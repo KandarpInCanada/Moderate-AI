@@ -4,25 +4,26 @@ import NotificationToggle from "./notification-toggle";
 import { useNotifications } from "@/context/notifications-context";
 import {
   AlertCircle,
+  CheckCircle,
+  RefreshCw,
   Bell,
   ArrowRight,
-  Copy,
-  Link,
-  CheckCircle,
 } from "lucide-react";
-import NextLink from "next/link";
-import WebhookDocumentation from "./webhook-documentation";
+import Link from "next/link";
 
 export default function NotificationSettings() {
-  const { enabled, webhookUrl } = useNotifications();
-  const [showCopied, setShowCopied] = useState(false);
+  const { enabled, pollForMessages, isPolling, pollingError, pollingSuccess } =
+    useNotifications();
+  const [showPollSuccess, setShowPollSuccess] = useState(false);
 
-  const handleCopyWebhookUrl = () => {
-    if (webhookUrl) {
-      navigator.clipboard.writeText(webhookUrl);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
-    }
+  const handlePollForMessages = async () => {
+    await pollForMessages();
+    setShowPollSuccess(true);
+
+    // Hide success message after 5 seconds
+    setTimeout(() => {
+      setShowPollSuccess(false);
+    }, 5000);
   };
 
   return (
@@ -48,7 +49,7 @@ export default function NotificationSettings() {
             </h4>
           </div>
 
-          <NextLink
+          <Link
             href="/notifications"
             className={`flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border hover:bg-muted/80 transition-colors ${
               !enabled ? "opacity-70 pointer-events-none" : ""
@@ -68,13 +69,13 @@ export default function NotificationSettings() {
               </div>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground" />
-          </NextLink>
+          </Link>
         </div>
 
-        {/* Webhook URL */}
+        {/* SQS Connection Status */}
         <div className="mb-6">
           <h4 className="text-sm font-medium text-muted-foreground mb-3">
-            Webhook Endpoint
+            AWS SQS Connection Status
           </h4>
           <div
             className={`bg-muted/50 rounded-lg p-4 border border-border ${
@@ -85,68 +86,90 @@ export default function NotificationSettings() {
               <div className="flex items-center">
                 <div
                   className={`h-3 w-3 rounded-full mr-3 ${
-                    !enabled ? "bg-gray-400" : "bg-green-500"
+                    !enabled
+                      ? "bg-gray-400"
+                      : pollingError
+                      ? "bg-red-500"
+                      : pollingSuccess
+                      ? "bg-green-500"
+                      : "bg-gray-400"
                   }`}
                 ></div>
                 <div>
                   <h5 className="text-sm font-medium text-foreground">
-                    {!enabled ? "Disabled" : "Active"}
+                    {!enabled
+                      ? "Disabled"
+                      : pollingError
+                      ? "Disconnected"
+                      : pollingSuccess
+                      ? "Connected"
+                      : "Unknown"}
                   </h5>
                   <p className="text-xs text-muted-foreground mt-1">
                     {!enabled
                       ? "Notifications are currently disabled"
-                      : "Your personal webhook endpoint is active"}
+                      : pollingError
+                      ? "Unable to connect to AWS SQS"
+                      : pollingSuccess
+                      ? "Successfully connected to AWS SQS"
+                      : "Connection status unknown"}
                   </p>
                 </div>
               </div>
+              <button
+                onClick={handlePollForMessages}
+                disabled={isPolling || !enabled}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center ${
+                  isPolling || !enabled
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                }`}
+              >
+                {isPolling ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-1.5" />
+                    Check Connection
+                  </>
+                )}
+              </button>
             </div>
-
-            {enabled && webhookUrl && (
-              <div className="mt-4 p-3 bg-background rounded-md flex items-center justify-between">
-                <div className="flex items-center">
-                  <Link className="h-4 w-4 text-primary mr-2" />
-                  <p className="text-xs font-mono text-muted-foreground truncate max-w-[200px] md:max-w-[300px]">
-                    {webhookUrl}
-                  </p>
-                </div>
-                <button
-                  onClick={handleCopyWebhookUrl}
-                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-                  title="Copy webhook URL"
-                >
-                  {showCopied ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            This is your personal webhook endpoint for receiving notifications.
-            You can configure AWS SNS to send notifications to this URL.
-          </p>
-        </div>
-
-        {/* Information about webhooks */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4 flex items-start">
-          <AlertCircle className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h4 className="font-medium text-blue-800 dark:text-blue-400">
-              About Webhooks
-            </h4>
-            <p className="text-blue-700 dark:text-blue-500 text-sm">
-              Webhooks allow external services like AWS SNS to send
-              notifications directly to your application. Configure your AWS SNS
-              topics to publish to your personal webhook URL to receive
-              real-time notifications.
-            </p>
           </div>
         </div>
 
-        {/* Add the webhook documentation component */}
-        <WebhookDocumentation />
+        {/* Success message */}
+        {showPollSuccess && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900/30 rounded-lg p-4 flex items-start">
+            <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-green-800 dark:text-green-400">
+                Connection Successful
+              </h4>
+              <p className="text-green-700 dark:text-green-500 text-sm">
+                Successfully connected to AWS SQS notification service.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Error message for connection errors */}
+        {pollingError && enabled && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/30 rounded-lg p-4 flex items-start">
+            <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h4 className="font-medium text-red-800 dark:text-red-400">
+                Connection Error
+              </h4>
+              <p className="text-red-700 dark:text-red-500 text-sm">
+                {pollingError}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,38 +7,36 @@ from decimal import Decimal
 
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
-sns = boto3.client('sns')
+sqs = boto3.client('sqs')
 
 image_metadata_table_name = os.environ['DYNAMODB_TABLE_NAME']
 notifications_table_name = os.environ['NOTIFICATIONS_TABLE_NAME']
-sns_topic_prefix = os.environ['SNS_TOPIC_PREFIX']
+sqs_queue_prefix = os.environ['SQS_QUEUE_PREFIX']
 
 image_metadata_table = dynamodb.Table(image_metadata_table_name)
 notifications_table = dynamodb.Table(notifications_table_name)
 
-def get_or_create_topic(sanitized_email):
-    topic_name = f"{sns_topic_prefix}{sanitized_email}"
+def get_or_create_queue(sanitized_email):
+    queue_name = f"{sqs_queue_prefix}{sanitized_email}"
     
-    # Check if topic already exists
+    # Check if queue already exists
     try:
-        topics = sns.list_topics()
-        for topic in topics.get('Topics', []):
-            if topic_name in topic['TopicArn']:
-                topic_arn = topic['TopicArn']
-                print(f"Found existing SNS topic: {topic_arn}")
-                return topic_arn
-    except Exception as e:
-        print(f"Error checking existing topics: {e}")
+        response = sqs.get_queue_url(QueueName=queue_name)
+        queue_url = response['QueueUrl']
+        print(f"Found existing SQS queue: {queue_url}")
+    except sqs.exceptions.QueueDoesNotExist:
+        # Create the queue if it doesn't exist
+        response = sqs.create_queue(
+            QueueName=queue_name,
+            Attributes={
+                'MessageRetentionPeriod': '86400',  # 1 day retention
+                'VisibilityTimeout': '60'  # 60 seconds
+            }
+        )
+        queue_url = response['QueueUrl']
+        print(f"Created new SQS queue: {queue_url}")
     
-    # Create the topic if it doesn't exist
-    try:
-        response = sns.create_topic(Name=topic_name)
-        topic_arn = response['TopicArn']
-        print(f"Created new SNS topic: {topic_arn}")
-        return topic_arn
-    except Exception as e:
-        print(f"Error creating SNS topic: {e}")
-        raise e
+    return queue_url
 
 # Helper function to convert floats to Decimals in a nested structure
 def convert_floats_to_decimals(obj):
@@ -145,10 +143,10 @@ def handler(event, context):
             notifications_table.put_item(Item=notification)
             print(f"Notification stored in DynamoDB: {notification_id}")
 
-            # Get or create SNS topic, then publish message
-            topic_arn = get_or_create_topic(sanitized_email)
+            # Get or create SQS queue, then send message
+            queue_url = get_or_create_queue(sanitized_email)
 
-            # Prepare message for SNS
+            # Prepare message for SQS
             message = {
                 'title': 'Image Analysis Complete',
                 'message': f"Your image '{filename}' has been analyzed. Found {face_count} faces and {len(labels)} objects.",
@@ -158,38 +156,10 @@ def handler(event, context):
                 'timestamp': timestamp
             }
 
-            # Create webhook URL for the user
-            app_url = os.environ.get('APP_URL', 'https://photosense.vercel.app')
-            webhook_url = f"{app_url}/api/webhooks/{sanitized_email.replace('@', '_').replace('.', '_')}"
-            
-            # Subscribe the webhook to the topic if not already subscribed
-            try:
-                # Check if webhook is already subscribed
-                subscriptions = sns.list_subscriptions_by_topic(TopicArn=topic_arn)
-                webhook_already_subscribed = False
-                
-                for sub in subscriptions.get('Subscriptions', []):
-                    if sub.get('Protocol') == 'https' and webhook_url in sub.get('Endpoint', ''):
-                        webhook_already_subscribed = True
-                        break
-                
-                # Subscribe webhook if not already subscribed
-                if not webhook_already_subscribed:
-                    sns.subscribe(
-                        TopicArn=topic_arn,
-                        Protocol='https',
-                        Endpoint=webhook_url,
-                        ReturnSubscriptionArn=True
-                    )
-                    print(f"Subscribed webhook URL to SNS topic: {webhook_url}")
-            except Exception as e:
-                print(f"Error managing webhook subscription: {e}")
-
-            # Send to SNS
-            response = sns.publish(
-                TopicArn=topic_arn,
-                Message=json.dumps(message),
-                Subject='Image Analysis Complete',
+            # Send to SQS
+            response = sqs.send_message(
+                QueueUrl=queue_url,
+                MessageBody=json.dumps(message),
                 MessageAttributes={
                     'MessageType': {
                         'DataType': 'String',
@@ -198,7 +168,7 @@ def handler(event, context):
                 }
             )
 
-            print(f"Message sent to SNS topic: {topic_arn}, MessageId: {response['MessageId']}")
+            print(f"Message sent to SQS queue: {queue_url}, MessageId: {response['MessageId']}")
 
         except Exception as e:
             print(f"Error processing file {record['s3']['object']['key']}: {e}")
@@ -208,5 +178,5 @@ def handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps("Image processing complete and notifications sent to SNS.")
+        "body": json.dumps("Image processing complete and notifications sent to SQS.")
     }
