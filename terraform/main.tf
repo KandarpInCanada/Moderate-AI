@@ -66,19 +66,6 @@ module "lambda_iam_role" {
   depends_on                         = [module.media_storage]
 }
 
-module "lambda_s3_trigger" {
-  source               = "./modules/lambda_s3_trigger"
-  lambda_function_name = var.lambda_function_name
-  lambda_role_arn      = module.lambda_iam_role.lambda_exec_arn
-  lambda_handler       = var.lambda_function_handler_name
-  lambda_runtime       = "python3.9"
-  s3_bucket            = module.media_storage.bucket_id
-  s3_prefix            = var.lambda_function_s3_folder_watch_name
-  tags                 = var.tags
-  environment_vars     = var.lambda_environment_vars
-  depends_on           = [module.media_storage]
-}
-
 
 module "ecs" {
   source                 = "./modules/ecs"
@@ -101,6 +88,21 @@ module "ecs" {
   health_check_path      = var.ecs_health_check_path
   ecs_execution_role_arn = module.ecs_iam.execution_role_arn
   ecs_task_role_arn      = module.ecs_iam.task_role_arn
+}
+
+module "lambda_s3_trigger" {
+  source               = "./modules/lambda_s3_trigger"
+  lambda_function_name = var.lambda_function_name
+  lambda_role_arn      = module.lambda_iam_role.lambda_exec_arn
+  lambda_handler       = var.lambda_function_handler_name
+  lambda_runtime       = "python3.9"
+  s3_bucket            = module.media_storage.bucket_id
+  s3_prefix            = var.lambda_function_s3_folder_watch_name
+  tags                 = var.tags
+  environment_vars = merge(var.lambda_environment_vars, {
+    APP_URL = "http://${module.ecs.load_balancer_dns_name}"
+  })
+  depends_on = [module.media_storage]
 }
 
 module "supabase_auth_settings" {

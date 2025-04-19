@@ -160,30 +160,45 @@ def handler(event, context):
 
             # Create webhook URL for the user
             app_url = os.environ.get('APP_URL', 'https://photosense.vercel.app')
-            webhook_url = f"{app_url}/api/webhooks/{sanitized_email.replace('@', '_').replace('.', '_')}"
-            
-            # Subscribe the webhook to the topic if not already subscribed
-            try:
-                # Check if webhook is already subscribed
-                subscriptions = sns.list_subscriptions_by_topic(TopicArn=topic_arn)
-                webhook_already_subscribed = False
-                
-                for sub in subscriptions.get('Subscriptions', []):
-                    if sub.get('Protocol') == 'https' and webhook_url in sub.get('Endpoint', ''):
-                        webhook_already_subscribed = True
-                        break
-                
-                # Subscribe webhook if not already subscribed
-                if not webhook_already_subscribed:
-                    sns.subscribe(
-                        TopicArn=topic_arn,
-                        Protocol='https',
-                        Endpoint=webhook_url,
-                        ReturnSubscriptionArn=True
-                    )
-                    print(f"Subscribed webhook URL to SNS topic: {webhook_url}")
-            except Exception as e:
-                print(f"Error managing webhook subscription: {e}")
+            # Ensure app_url has https:// prefix
+            if not app_url.startswith('http'):
+                app_url = f"https://{app_url}"
+
+            # Create a properly sanitized webhook URL
+            sanitized_endpoint = sanitized_email.replace('@', '_').replace('.', '_')
+            webhook_url = f"{app_url}/api/webhooks/{sanitized_endpoint}"
+
+            # Validate the webhook URL format
+            if not webhook_url.startswith('https://'):
+                print(f"Warning: Webhook URL {webhook_url} does not use HTTPS protocol, SNS requires HTTPS")
+                # For development, you might want to skip subscription if not HTTPS
+                # But for production, ensure your URL is HTTPS
+            else:
+                # Subscribe the webhook to the topic if not already subscribed
+                try:
+                    # Check if webhook is already subscribed
+                    subscriptions = sns.list_subscriptions_by_topic(TopicArn=topic_arn)
+                    webhook_already_subscribed = False
+                    
+                    for sub in subscriptions.get('Subscriptions', []):
+                        if sub.get('Protocol') == 'https' and webhook_url in sub.get('Endpoint', ''):
+                            webhook_already_subscribed = True
+                            print(f"Webhook URL already subscribed: {webhook_url}")
+                            break
+                    
+                    # Subscribe webhook if not already subscribed
+                    if not webhook_already_subscribed:
+                        print(f"Attempting to subscribe webhook URL to SNS topic: {webhook_url}")
+                        subscription_response = sns.subscribe(
+                            TopicArn=topic_arn,
+                            Protocol='https',
+                            Endpoint=webhook_url,
+                            ReturnSubscriptionArn=True
+                        )
+                        print(f"Subscribed webhook URL to SNS topic: {webhook_url}, ARN: {subscription_response.get('SubscriptionArn')}")
+                except Exception as e:
+                    print(f"Error managing webhook subscription: {e}")
+                    print(f"Failed webhook URL: {webhook_url}")
 
             # Send to SNS
             response = sns.publish(

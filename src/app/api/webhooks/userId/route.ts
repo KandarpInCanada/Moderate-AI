@@ -50,11 +50,23 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     if (body.Type === "SubscriptionConfirmation") {
       console.log("Received SNS subscription confirmation request")
 
-      // In a production environment, you should:
-      // 1. Verify the subscription is expected
-      // 2. Make a GET request to the SubscribeURL to confirm
+      // Automatically confirm the subscription by making a GET request to the SubscribeURL
+      if (body.SubscribeURL) {
+        try {
+          console.log(`Confirming subscription by accessing: ${body.SubscribeURL}`)
+          const response = await fetch(body.SubscribeURL)
 
-      return NextResponse.json({ message: "Subscription confirmation received" })
+          if (response.ok) {
+            console.log("SNS subscription confirmed successfully")
+          } else {
+            console.error(`Failed to confirm subscription: ${response.status} ${response.statusText}`)
+          }
+        } catch (error) {
+          console.error("Error confirming SNS subscription:", error)
+        }
+      }
+
+      return NextResponse.json({ message: "Subscription confirmation processed" })
     }
 
     // Verify this is a valid SNS message
