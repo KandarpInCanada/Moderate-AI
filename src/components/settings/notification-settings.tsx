@@ -4,13 +4,14 @@ import NotificationToggle from "./notification-toggle";
 import { useNotifications } from "@/context/notifications-context";
 import {
   AlertCircle,
-  CheckCircle,
   Bell,
   ArrowRight,
   Copy,
   Link,
+  CheckCircle,
 } from "lucide-react";
 import NextLink from "next/link";
+import WebhookDocumentation from "./webhook-documentation";
 
 export default function NotificationSettings() {
   const { enabled, webhookUrl } = useNotifications();
@@ -143,6 +144,9 @@ export default function NotificationSettings() {
             </p>
           </div>
         </div>
+
+        {/* Add the webhook documentation component */}
+        <WebhookDocumentation />
       </div>
     </div>
   );
