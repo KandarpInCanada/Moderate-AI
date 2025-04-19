@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-client"
-import { receiveMessagesFromQueue, deleteMessageFromQueue, getUserQueueUrl } from "@/lib/sqs-client"
 import { docClient } from "@/lib/dynamo-client"
-import { QueryCommand } from "@aws-sdk/lib-dynamodb"
+import { QueryCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb"
 
 export async function GET(request: Request) {
   try {
@@ -37,47 +36,9 @@ export async function GET(request: Request) {
       const dynamoNotifications = await fetchDynamoDBNotifications(userIdentifier)
       console.log(`Retrieved ${dynamoNotifications.length} notifications from DynamoDB`)
 
-      // Poll for messages from SQS
-      const messages = await receiveMessagesFromQueue(userIdentifier, 10)
-      console.log(`Received ${messages.length} messages from SQS`)
-
-      // Process SQS messages into a more usable format
-      const sqsNotifications = messages.map((message) => {
-        try {
-          const body = JSON.parse(message.Body || "{}")
-          return {
-            id: message.MessageId,
-            receiptHandle: message.ReceiptHandle,
-            title: body.title || "Notification",
-            message: body.message || "You have a new notification",
-            type: body.type || "info",
-            timestamp: body.timestamp || new Date().toISOString(),
-            imageId: body.imageId,
-            imageUrl: body.imageUrl,
-            source: "sqs",
-          }
-        } catch (e) {
-          // If parsing fails, return a basic notification
-          return {
-            id: message.MessageId,
-            receiptHandle: message.ReceiptHandle,
-            title: "New Notification",
-            message: message.Body || "You have a new notification",
-            type: "info",
-            timestamp: new Date().toISOString(),
-            source: "sqs",
-          }
-        }
-      })
-
-      // Combine notifications from both sources and sort by timestamp (newest first)
-      const allNotifications = [...dynamoNotifications, ...sqsNotifications].sort((a, b) => {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      })
-
       return NextResponse.json({
-        notifications: allNotifications,
-        queueUrl: getUserQueueUrl(userIdentifier),
+        notifications: dynamoNotifications,
+        webhookUrl: `/api/webhooks/${userIdentifier.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}`,
       })
     } catch (error: any) {
       console.error("Error fetching notifications:", error)
@@ -129,7 +90,7 @@ async function fetchDynamoDBNotifications(userIdentifier: string) {
   }
 }
 
-// Delete a notification (message) from the queue
+// Delete a notification from DynamoDB
 export async function DELETE(request: Request) {
   try {
     // Get the authorization header
@@ -154,18 +115,24 @@ export async function DELETE(request: Request) {
     }
 
     // Parse the request body
-    const { receiptHandle, notificationId, source } = await request.json()
+    const { notificationId, source } = await request.json()
 
     // Get user identifier (email or ID)
     const userIdentifier = user.email || user.id
 
-    if (source === "sqs" && receiptHandle) {
-      // Delete the message from the SQS queue
-      await deleteMessageFromQueue(userIdentifier, receiptHandle)
-    } else if (source === "dynamodb" && notificationId) {
-      // Mark the notification as deleted in DynamoDB
-      // This would be implemented if we want to actually delete from DynamoDB
-      // For now, we'll just return success
+    if (source === "dynamodb" && notificationId) {
+      // Delete the notification from DynamoDB
+      const tableName = process.env.NEXT_PUBLIC_NOTIFICATIONS_DYNAMODB_TABLE_NAME || "PhotoSense-Notifications"
+
+      await docClient.send(
+        new DeleteCommand({
+          TableName: tableName,
+          Key: {
+            UserId: userIdentifier,
+            NotificationId: notificationId,
+          },
+        }),
+      )
     } else {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
