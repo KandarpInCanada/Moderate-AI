@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
       - 'infra-v*'  # For infrastructure provisioning
-      - 'destroy-v*'  # For infrastructure destruction
   pull_request:
     branches: [ main ]
 
@@ -43,9 +42,7 @@ jobs:
       has_tag: ${{ steps.check-tag.outputs.has_tag }}
       tag_name: ${{ steps.check-tag.outputs.tag_name }}
       is_infra_tag: ${{ steps.check-tag.outputs.is_infra_tag }}
-      is_destroy_tag: ${{ steps.check-tag.outputs.is_destroy_tag }}
       run_terraform: ${{ steps.check-tag.outputs.run_terraform }}
-      run_destroy: ${{ steps.check-tag.outputs.run_destroy }}
     steps:
       - name: Check for tag
         id: check-tag
@@ -56,31 +53,19 @@ jobs:
             echo "tag_name=$TAG" >> $GITHUB_OUTPUT
             echo "Tag detected: $TAG"
             
-            # Check if it's a destroy tag
-            if [[ $TAG == destroy-v* ]]; then
-              echo "is_destroy_tag=true" >> $GITHUB_OUTPUT
-              echo "is_infra_tag=false" >> $GITHUB_OUTPUT
-              echo "run_terraform=false" >> $GITHUB_OUTPUT
-              echo "run_destroy=true" >> $GITHUB_OUTPUT
-              echo "Destroy tag detected - will run Terraform destroy"
             # Check if it's an infrastructure tag
-            elif [[ $TAG == infra-v* ]]; then
+            if [[ $TAG == infra-v* ]]; then
               echo "is_infra_tag=true" >> $GITHUB_OUTPUT
-              echo "is_destroy_tag=false" >> $GITHUB_OUTPUT
               echo "run_terraform=true" >> $GITHUB_OUTPUT
-              echo "run_destroy=false" >> $GITHUB_OUTPUT
-              echo "Infrastructure tag detected - will run Terraform apply"
+              echo "Infrastructure tag detected - will run Terraform"
             else
               echo "is_infra_tag=false" >> $GITHUB_OUTPUT
-              echo "is_destroy_tag=false" >> $GITHUB_OUTPUT
               echo "run_terraform=false" >> $GITHUB_OUTPUT
-              echo "run_destroy=false" >> $GITHUB_OUTPUT
               echo "Application tag detected - will skip Terraform"
             fi
           else
             echo "has_tag=false" >> $GITHUB_OUTPUT
             echo "run_terraform=false" >> $GITHUB_OUTPUT
-            echo "run_destroy=false" >> $GITHUB_OUTPUT
             echo "No tag detected. Pipeline will fail at build stage."
           fi
 
@@ -169,8 +154,9 @@ jobs:
             SQS_QUEUE_PREFIX         = "user-notify-"
           }
           # Using your existing Supabase credentials
+          # You'll need to add SUPABASE_PROJECT_ID as a new secret
           supabase_project_id   = "ieplmkmrqwwvixexjwhh"  # Hardcoded from your tfvars
-          supabase_access_token = "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"
+          supabase_access_token = "${{ secrets.SUPABASE_ACCESS_TOKEN }}"
           EOF
           
           # Print non-sensitive parts of the file to verify
@@ -197,129 +183,13 @@ jobs:
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan
 
-  terraform-destroy:
-    name: Terraform Infrastructure Destruction
-    needs: [check-tag]
-    runs-on: ubuntu-latest
-    # Only run if explicitly requested via destroy tag
-    if: needs.check-tag.outputs.run_destroy == 'true'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.5.0
-      
-      - name: Create secure tfvars file
-        working-directory: ./terraform
-        run: |
-          # Create a secure tfvars file with sensitive values from GitHub secrets
-          cat > terraform.auto.tfvars <<EOF
-          app_name                 = "photosense"
-          aws_region               = "us-east-1"
-          aws_access_key           = "${{ secrets.AWS_ACCESS_KEY_ID }}"
-          aws_secret_key           = "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-          aws_account_id           = "${{ secrets.NEXT_AWS_ACCOUNT_ID }}"
-          ecr_repository_name      = "photo-sense"
-          aws_environment          = "prod"
-          s3_bucket_name           = "photosense-media"
-          vpc_name                 = "photosense"
-          vpc_cidr                 = "10.0.0.0/16"
-          vpc_public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
-          vpc_private_subnet_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
-          vpc_azs                  = ["us-east-1a", "us-east-1b"]
-          ecs_task_cpu             = 2048
-          ecs_task_memory          = 4096
-          ecs_container_name       = "photo-sense"
-          ecs_container_port       = 3000
-          ecs_container_image_tag  = "${{ needs.check-tag.outputs.tag_name }}"
-          ecs_container_environment = [
-            {
-              name  = "NODE_ENV"
-              value = "production"
-            }
-          ]
-          ecs_desired_count                     = 1
-          ecs_health_check_path                 = "/api/health"
-          image_metadata_dynamodb_table_name    = "ImageMetadata"
-          image_metadata_dynamodb_hash_key      = "ImageId"
-          image_metadata_dynamodb_hash_key_type = "S"
-          user_details_dynamodb_table_name      = "UserDetails"
-          user_details_dynamodb_hash_key        = "Email"
-          user_details_dynamodb_hash_key_type   = "S"
-          notifications_dynamodb_table_name     = "PhotoSense-Notifications"
-          notifications_dynamodb_hash_key       = "UserId"
-          notifications_dynamodb_hash_key_type  = "S"
-          notifications_dynamodb_range_key      = "NotificationId"
-          notifications_dynamodb_range_key_type = "S"
-          tags = {
-            Project     = "PhotoSense"
-            Application = "PhotoSense"
-            Service     = "PhotoSenseService"
-            Environment = "prod"
-            Owner       = "DevOps"
-            Team        = "Backend"
-            Contact     = "kandarp.canada@gmail.com"
-            ManagedBy   = "Terraform"
-            Monitoring  = "enabled"
-            Name        = "photo-sense"
-          }
-          lambda_function_name                 = "s3-trigger-lambda"
-          lambda_function_handler_name         = "index.handler"
-          lambda_function_s3_folder_watch_name = "users/"
-          lambda_environment_vars = {
-            DYNAMODB_TABLE_NAME      = "ImageMetadata"
-            NOTIFICATIONS_TABLE_NAME = "PhotoSense-Notifications"
-            SQS_QUEUE_PREFIX         = "user-notify-"
-          }
-          # Using your existing Supabase credentials
-          supabase_project_id   = "ieplmkmrqwwvixexjwhh"  # Hardcoded from your tfvars
-          supabase_access_token = "${{ secrets.NEXT_SUPABASE_SERVICE_ROLE_KEY }}"
-          EOF
-          
-          # Print non-sensitive parts of the file to verify
-          echo "Created terraform.auto.tfvars with the following non-sensitive values:"
-          grep -v "aws_access_key\|aws_secret_key\|supabase_access_token" terraform.auto.tfvars
-      
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: |
-          terraform init \
-            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
-            -backend-config="key=photosense/terraform.tfstate" \
-            -backend-config="region=${{ env.AWS_REGION }}"
-      
-      - name: Terraform Plan Destroy
-        working-directory: ./terraform
-        run: terraform plan -destroy -out=tfdestroyplan
-      
-      - name: Terraform Destroy
-        working-directory: ./terraform
-        run: terraform apply -auto-approve tfdestroyplan
-        
-      - name: Notify Destruction Complete
-        run: |
-          echo "Infrastructure destruction completed successfully!"
-          echo "Tag used: ${{ needs.check-tag.outputs.tag_name }}"
-
   build-and-push:
     name: Build and Push to ECR
     needs: [application, check-tag, terraform-provision]
     runs-on: ubuntu-latest
     # Run if it's a tag and either terraform was skipped or completed successfully
-    # Skip if it's a destroy tag
     if: |
       needs.check-tag.outputs.has_tag == 'true' && 
-      needs.check-tag.outputs.is_destroy_tag != 'true' &&
       (needs.check-tag.outputs.run_terraform == 'false' || success())
     outputs:
       image: ${{ steps.set-image.outputs.image }}
@@ -368,8 +238,7 @@ jobs:
     name: Deploy to ECS
     needs: [build-and-push, check-tag]
     runs-on: ubuntu-latest
-    # Skip if it's a destroy tag
-    if: needs.check-tag.outputs.has_tag == 'true' && needs.check-tag.outputs.is_destroy_tag != 'true'
+    if: needs.check-tag.outputs.has_tag == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
