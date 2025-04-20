@@ -51,7 +51,6 @@ export async function GET() {
 
     const isHealthy = databaseStatus !== "error" && (dynamoStatus === "connected" || dynamoStatus === "not_configured")
 
-    // Return health check response
     return NextResponse.json({
       ...healthData,
       status: isHealthy ? "healthy" : "degraded",
