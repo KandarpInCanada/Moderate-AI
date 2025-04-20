@@ -49,7 +49,6 @@ export async function GET() {
       dynamoStatus = "error"
     }
 
-    // Determine overall status based on dependencies
     const isHealthy = databaseStatus !== "error" && (dynamoStatus === "connected" || dynamoStatus === "not_configured")
 
     // Return health check response
