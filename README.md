@@ -1,15 +1,16 @@
 ![Next JS](https://img.shields.io/badge/Next-black?style=for-the-badge&logo=next.js&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-844FBA.svg?style=for-the-badge&logo=Terraform&logoColor=white)
 ![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![AmazonDynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?style=for-the-badge&logo=Amazon%20DynamoDB&logoColor=white)
-![AmazonLambda](https://img.shields.io/badge/AWS%20Lambda-FF9900.svg?style=for-the-badge&logo=AWS-Lambda&logoColor=white)
-![AWSFargate](https://img.shields.io/badge/AWS%20Fargate-FF9900.svg?style=for-the-badge&logo=AWS-Fargate&logoColor=white)
-![AmazonCloudWatch](https://img.shields.io/badge/Amazon%20CloudWatch-FF4F8B.svg?style=for-the-badge&logo=Amazon-CloudWatch&logoColor=white)
 ![AmazonECS](https://img.shields.io/badge/Amazon%20ECS-FF9900.svg?style=for-the-badge&logo=Amazon-ECS&logoColor=white)
+![AWSFargate](https://img.shields.io/badge/AWS%20Fargate-FF9900.svg?style=for-the-badge&logo=AWS-Fargate&logoColor=white)
+![AmazonLambda](https://img.shields.io/badge/AWS%20Lambda-FF9900.svg?style=for-the-badge&logo=AWS-Lambda&logoColor=white)
+![AmazonDynamoDB](https://img.shields.io/badge/Amazon%20DynamoDB-4053D6?style=for-the-badge&logo=Amazon%20DynamoDB&logoColor=white)
 ![AmazonS3](https://img.shields.io/badge/Amazon%20S3-569A31.svg?style=for-the-badge&logo=Amazon-S3&logoColor=white)
 ![AmazonSQS](https://img.shields.io/badge/Amazon%20SQS-FF4F8B.svg?style=for-the-badge&logo=Amazon-SQS&logoColor=white)
+![AmazonCloudWatch](https://img.shields.io/badge/Amazon%20CloudWatch-FF4F8B.svg?style=for-the-badge&logo=Amazon-CloudWatch&logoColor=white)
 ![AmazonIAM](https://img.shields.io/badge/Amazon%20Identity%20Access%20Management-DD344C.svg?style=for-the-badge&logo=Amazon-Identity-Access-Management&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
 ### PhotoSense - AI-Powered Photo Organization
 
