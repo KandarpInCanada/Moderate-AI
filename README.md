@@ -1,3 +1,5 @@
+![Next.js Badge](https://img.shields.io/badge/Next.js-000?logo=nextdotjs&logoColor=fff&style=flat-square)
+
 ### PhotoSense - AI-Powered Photo Organization
 
 ## Overview
