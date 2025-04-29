@@ -14,14 +14,17 @@
 
 ### PhotoSense - AI-Powered Photo Organization
 
+
 ## Overview
 
 PhotoSense is a cloud-native photo organization application that leverages AWS services and AI to automatically analyze, categorize, and organize your photos. The application uses AWS Rekognition to detect objects, faces, text, and locations in images, providing a smart and intuitive way to browse and search your photo collection. The entire application is deployed using a serverless architecture with AWS ECS Fargate and Lambda functions.
 
 https://github.com/user-attachments/assets/1438a69b-9343-4ae8-a004-2009ced3a6c1
 
-## Features
 
+<img width="741" alt="Screenshot 2025-04-29 at 10 18 00 AM" src="https://github.com/user-attachments/assets/18c449d6-cbb5-43d0-bf8a-0a39b4d8e7de" />
+
+## Features
 - **AI-Powered Photo Analysis**: Automatically detects objects, faces, text, and locations in your photos using AWS Rekognition
 - **Smart Collections**: Dynamically creates collections based on people, locations, objects, and dates
 - **Real-time Notifications**: Receive notifications when your photos are processed using AWS SQS
